@@ -22,7 +22,7 @@ func main() {
 		log.Fatalf("parsing MY_ASN: %v", err)
 	}
 
-	routerID := net.ParseIP(getenvOrDefault("ROUTER_ID", "10.0.0.1"))
+	routerID := net.ParseIP(getenvOrDefault("ROUTER_ID", "10.0.0.1")).To4()
 	if routerID == nil || len(routerID) != 4 {
 		log.Fatalf("invalid ROUTER_ID")
 	}
