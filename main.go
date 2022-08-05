@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"time"
 )
 
 func getenvOrDefault(name, def string) string {
@@ -33,5 +34,8 @@ func main() {
 		ID:       id,
 		HoldTime: 180,
 	}
-	log.Fatal(p.connect("tcp", getenvOrDefault("NEIGHBOR_ADDR", "10.0.0.2")))
+	for {
+		log.Printf("connect: %v", p.connect("tcp", getenvOrDefault("NEIGHBOR_ADDR", "10.0.0.2")))
+		time.Sleep(time.Second)
+	}
 }
