@@ -3,7 +3,7 @@ all: build-docker reconf
 
 .PHONY: build-docker
 build-docker:
-	docker built -t takonobgp .
+	docker build -t takonobgp .
 
 .PHONY: reconf
 reconf:
