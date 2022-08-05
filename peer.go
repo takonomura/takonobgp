@@ -70,7 +70,7 @@ func (p *Peer) connect(network, address string) error {
 		case KeepaliveMessage:
 			log.Printf("received keepalive message: %+v", m)
 		default:
-			fmt.Printf("received message: %T (%+v)", m, m)
+			log.Printf("received message: %T (%+v)", m, m)
 		}
 	}
 }
