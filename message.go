@@ -149,7 +149,7 @@ type KeepaliveMessage struct {
 }
 
 func ParseKeepaliveMessage(buf []byte) (Message, error) {
-	if len(buf) != headerSize {
+	if len(buf) != 0 {
 		return nil, fmt.Errorf("invalid keepalive message length: %d", len(buf))
 	}
 	return KeepaliveMessage{}, nil
