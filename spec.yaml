@@ -21,15 +21,8 @@ nodes:
 node_configs:
   - name: R1
     cmds:
-      - cmd: /usr/lib/frr/frr start
       - cmd: ip addr add 10.0.0.1/24 dev net0
       - cmd: ip addr add 10.1.0.1/24 dev net1
-      - cmd: >-
-          vtysh -c "conf t"
-          -c "router bgp 65001"
-          -c "bgp router-id 10.0.0.1"
-          -c "neighbor 10.0.0.2 remote-as 65002"
-          -c "network 10.1.0.0/24"
   - name: R2
     cmds:
       - cmd: /usr/lib/frr/frr start
