@@ -58,7 +58,7 @@ func ReadPacket(r io.Reader) (Message, error) {
 	}
 
 	size := binary.BigEndian.Uint16(header[markerSize : markerSize+2])
-	if size > headerSize || size < 4096 {
+	if size < headerSize || size > 4096 {
 		return nil, fmt.Errorf("invalid message length: %d", size)
 	}
 
