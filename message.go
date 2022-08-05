@@ -98,7 +98,7 @@ func ParseOpenMessage(buf []byte) (Message, error) {
 	if len(buf) < 10 {
 		return nil, fmt.Errorf("too short open message: len = %d", len(buf))
 	}
-	if len(buf) != 10+int(buf[10]) {
+	if len(buf) != 10+int(buf[9]) {
 		return nil, fmt.Errorf("invalid open message length: expected %d; got %d", 10+buf[10], len(buf))
 	}
 	var id [4]byte
