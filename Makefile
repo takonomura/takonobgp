@@ -7,4 +7,4 @@ build-docker:
 
 .PHONY: reconf
 reconf:
-	tinet reconf | sudo sh -ex
+	tinet reconf | sed -E 's/--rm //' | sudo sh -ex
