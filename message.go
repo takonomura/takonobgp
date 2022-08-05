@@ -127,10 +127,10 @@ func (m OpenMessage) WriteTo(w io.Writer) (int64, error) {
 	if _, err := buf.Write([]byte{m.Version}); err != nil {
 		return 0, err
 	}
-	if err := binary.Write(w, binary.BigEndian, m.MyAS); err != nil {
+	if err := binary.Write(buf, binary.BigEndian, m.MyAS); err != nil {
 		return 0, err
 	}
-	if err := binary.Write(w, binary.BigEndian, m.HoldTime); err != nil {
+	if err := binary.Write(buf, binary.BigEndian, m.HoldTime); err != nil {
 		return 0, err
 	}
 	if _, err := buf.Write(m.BGPID[:]); err != nil {
