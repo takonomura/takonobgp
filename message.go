@@ -32,7 +32,7 @@ type UnknownMessage struct {
 }
 
 func (m UnknownMessage) WriteTo(w io.Writer) (int64, error) {
-	buf := bytes.NewBuffer(make([]byte, headerSize+len(m.Payload)))
+	buf := bytes.NewBuffer(make([]byte, 0, headerSize+len(m.Payload)))
 	header := createHeader(uint16(headerSize+len(m.Payload)), m.Type)
 	_, err := buf.Write(header[:])
 	if err != nil {
@@ -95,7 +95,7 @@ type OpenMessage struct {
 }
 
 func ParseOpenMessage(buf []byte) (Message, error) {
-	if len(buf) > 10 {
+	if len(buf) < 10 {
 		return nil, fmt.Errorf("too short open message: len = %d", len(buf))
 	}
 	if len(buf) != 10+int(buf[10]) {
@@ -116,7 +116,7 @@ func ParseOpenMessage(buf []byte) (Message, error) {
 
 func (m OpenMessage) WriteTo(w io.Writer) (int64, error) {
 	size := headerSize + 10 + len(m.OptionalParameters)
-	buf := bytes.NewBuffer(make([]byte, size))
+	buf := bytes.NewBuffer(make([]byte, 0, size))
 
 	header := createHeader(uint16(size), 1)
 	_, err := buf.Write(header[:])
