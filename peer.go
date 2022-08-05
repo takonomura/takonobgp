@@ -39,7 +39,7 @@ func (p *Peer) connect(network, address string) error {
 		return fmt.Errorf("send open message: %w", err)
 	}
 
-	log.Panicf("receiving message")
+	log.Printf("receiving message")
 
 	m, err := ReadPacket(p.conn)
 	if err != nil {
