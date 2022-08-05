@@ -68,7 +68,10 @@ func (p *Peer) connect(network, address string) error {
 
 		switch m := m.(type) {
 		case KeepaliveMessage:
-			log.Printf("received keepalive message: %+v", m)
+			log.Printf("received keepalive message")
+			if err := p.sendMessage(KeepaliveMessage{}); err != nil {
+				return fmt.Errorf("send pong: %w", err)
+			}
 		default:
 			log.Printf("received message: %T (%+v)", m, m)
 		}
