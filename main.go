@@ -35,7 +35,7 @@ func main() {
 		HoldTime: 180,
 	}
 	for {
-		log.Printf("connect: %v", p.connect("tcp", getenvOrDefault("NEIGHBOR_ADDR", "10.0.0.2")))
+		log.Printf("connect: %v", p.connect("tcp", getenvOrDefault("NEIGHBOR_ADDR", "10.0.0.2:179")))
 		time.Sleep(time.Second)
 	}
 }
