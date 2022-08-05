@@ -1,6 +1,6 @@
 nodes:
   - name: R1
-    build: .
+    image: takonobgp
     interfaces:
       - { name: net0, type: direct, args: R2#net0 }
       - { name: net1, type: direct, args: C1#net0 }
