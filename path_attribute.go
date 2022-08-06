@@ -38,7 +38,7 @@ func OriginFromPathAttribute(a PathAttribute) (OriginAttribute, error) {
 
 func (a OriginAttribute) ToPathAttribute() PathAttribute {
 	return PathAttribute{
-		Flags:    0b00000000,
+		Flags:    0b01000000, // well-known transitive
 		TypeCode: AttributeTypeOrigin,
 		Value:    []byte{byte(a)},
 	}
@@ -81,7 +81,7 @@ func (a ASPathAttribute) ToPathAttribute() PathAttribute {
 		binary.BigEndian.PutUint16(b[offset:offset+2], s)
 	}
 	return PathAttribute{
-		Flags:    0b00000000,
+		Flags:    0b01000000, // well-known transitive
 		TypeCode: AttributeTypeASPath,
 		Value:    b,
 	}
@@ -101,7 +101,7 @@ func NextHopFromPathAttribute(a PathAttribute) (NextHopAttribute, error) {
 
 func (a NextHopAttribute) ToPathAttribute() PathAttribute {
 	return PathAttribute{
-		Flags:    0b00000000,
+		Flags:    0b01000000, // well-known transitive
 		TypeCode: AttributeTypeNextHop,
 		Value:    []byte(a),
 	}
