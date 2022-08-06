@@ -74,6 +74,8 @@ func ReadPacket(r io.Reader) (Message, error) {
 	switch t {
 	case MessageTypeOpen:
 		return ParseOpenMessage(buf)
+	case MessageTypeNotification:
+		return ParseNotificationMessage(buf)
 	case MessageTypeKeepalive:
 		return ParseKeepaliveMessage(buf)
 	default:
@@ -127,6 +129,37 @@ func (m OpenMessage) WriteTo(w io.Writer) (int64, error) {
 	buf.Write(m.BGPID[:])
 	buf.Write([]byte{uint8(len(m.OptionalParameters))})
 	buf.Write(m.OptionalParameters)
+
+	return buf.WriteTo(w)
+}
+
+type NotificationMessage struct {
+	ErrorCode    uint8
+	ErrorSubcode uint8
+	Data         []byte
+}
+
+func ParseNotificationMessage(buf []byte) (Message, error) {
+	if len(buf) < 2 {
+		return nil, fmt.Errorf("too short notification message: %d", len(buf))
+	}
+	data := make([]byte, len(buf)-2)
+	copy(data, buf[2:])
+	return NotificationMessage{
+		ErrorCode:    buf[0],
+		ErrorSubcode: buf[1],
+		Data:         data,
+	}, nil
+}
+
+func (m NotificationMessage) WriteTo(w io.Writer) (int64, error) {
+	size := headerSize + 2 + len(m.Data)
+	buf := bytes.NewBuffer(make([]byte, 0, size))
+
+	header := createHeader(uint16(size), MessageTypeNotification)
+	buf.Write(header[:])
+	buf.Write([]byte{m.ErrorCode, m.ErrorSubcode})
+	buf.Write(m.Data)
 
 	return buf.WriteTo(w)
 }
