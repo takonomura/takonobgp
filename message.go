@@ -12,22 +12,31 @@ const (
 	headerSize = 19 // marker (16) + length (2) + type (1)
 )
 
+type MessageType uint8
+
+const (
+	MessageTypeOpen MessageType = iota + 1
+	MessageTypeUpdate
+	MessageTypeNotification
+	MessageTypeKeepalive
+)
+
 type Message interface {
 	io.WriterTo
 }
 
-func createHeader(l uint16, t uint8) [headerSize]byte {
+func createHeader(l uint16, t MessageType) [headerSize]byte {
 	var b [headerSize]byte
 	for i := 0; i < markerSize; i++ {
 		b[i] = 0xFF
 	}
 	binary.BigEndian.PutUint16(b[markerSize:markerSize+2], l)
-	b[headerSize-1] = t
+	b[headerSize-1] = uint8(t)
 	return b
 }
 
 type UnknownMessage struct {
-	Type    uint8
+	Type    MessageType
 	Payload []byte
 }
 
@@ -67,14 +76,11 @@ func ReadPacket(r io.Reader) (Message, error) {
 		return nil, err
 	}
 
-	t := header[headerSize-1]
+	t := MessageType(header[headerSize-1])
 	switch t {
-	// TODO: Implement message types
-	// case 2: // UPDATE
-	// case 3: // NOTIFICATION
-	case 1: // OPEN
+	case MessageTypeOpen:
 		return ParseOpenMessage(buf)
-	case 4: // KEEPALIVE
+	case MessageTypeKeepalive:
 		return ParseKeepaliveMessage(buf)
 	default:
 		payload := make([]byte, len(buf))
@@ -118,7 +124,7 @@ func (m OpenMessage) WriteTo(w io.Writer) (int64, error) {
 	size := headerSize + 10 + len(m.OptionalParameters)
 	buf := bytes.NewBuffer(make([]byte, 0, size))
 
-	header := createHeader(uint16(size), 1)
+	header := createHeader(uint16(size), MessageTypeOpen)
 	_, err := buf.Write(header[:])
 	if err != nil {
 		return 0, err
@@ -156,7 +162,7 @@ func ParseKeepaliveMessage(buf []byte) (Message, error) {
 }
 
 func (m KeepaliveMessage) WriteTo(w io.Writer) (int64, error) {
-	header := createHeader(headerSize, 4)
+	header := createHeader(headerSize, MessageTypeKeepalive)
 	n, err := w.Write(header[:])
 	return int64(n), err
 }
