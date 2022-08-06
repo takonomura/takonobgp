@@ -3,8 +3,10 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 )
 
 const (
@@ -74,6 +76,8 @@ func ReadPacket(r io.Reader) (Message, error) {
 	switch t {
 	case MessageTypeOpen:
 		return ParseOpenMessage(buf)
+	case MessageTypeUpdate:
+		return ParseUpdateMessage(buf)
 	case MessageTypeNotification:
 		return ParseNotificationMessage(buf)
 	case MessageTypeKeepalive:
@@ -131,6 +135,151 @@ func (m OpenMessage) WriteTo(w io.Writer) (int64, error) {
 	buf.Write(m.OptionalParameters)
 
 	return buf.WriteTo(w)
+}
+
+type PathAttribute struct {
+	Flags    byte
+	TypeCode uint8
+	Value    []byte
+}
+
+func (a *PathAttribute) ReadFrom(r io.Reader) (int64, error) {
+	var b [2]byte
+	if n, err := io.ReadFull(r, b[:]); err != nil {
+		return int64(n), fmt.Errorf("path attribute: %w", err)
+	}
+	a.Flags = b[0]
+	a.TypeCode = b[1]
+	extendedLength := a.Flags&0b00010000 != 0
+	total := 2
+	var length uint16
+	if !extendedLength {
+		if n, err := io.ReadFull(r, b[:1]); err != nil {
+			return 2 + int64(n), fmt.Errorf("path attribute length: %w", err)
+		}
+		total += 1
+		length = uint16(b[0])
+	} else {
+		if n, err := io.ReadFull(r, b[:]); err != nil {
+			return 2 + int64(n), fmt.Errorf("path attribute length: %w", err)
+		}
+		total += 2
+		length = binary.BigEndian.Uint16(b[:])
+	}
+	a.Value = make([]byte, length)
+	if n, err := io.ReadFull(r, a.Value); err != nil {
+		return int64(n + total), fmt.Errorf("path attribute value: %w", err)
+	}
+	return int64(total) + int64(length), nil
+}
+
+func (a *PathAttribute) WriteTo(w io.Writer) (int64, error) {
+	if n, err := w.Write([]byte{a.Flags, a.TypeCode}); err != nil {
+		return int64(n), err
+	}
+	total := 2
+
+	extendedLength := a.Flags&0b00010000 != 0
+	if !extendedLength {
+		if n, err := w.Write([]byte{uint8(len(a.Value))}); err != nil {
+			return int64(total + n), fmt.Errorf("path attribute length: %w", err)
+		}
+		total += 1
+	} else {
+		var b [2]byte
+		binary.BigEndian.PutUint16(b[:], uint16(len(a.Value)))
+		if n, err := w.Write(b[:]); err != nil {
+			return int64(total + n), fmt.Errorf("path attribute length: %w", err)
+		}
+		total += 2
+	}
+
+	if n, err := w.Write(a.Value); err != nil {
+		return int64(total + n), fmt.Errorf("path attribute value: %w", err)
+	}
+
+	return int64(total + len(a.Value)), nil
+}
+
+func (a PathAttribute) Len() int {
+	total := 3 + len(a.Value)
+	extendedLength := a.Flags&0b00010000 != 0
+	if extendedLength {
+		total += 1
+	}
+	return total
+}
+
+func readIPNet(r *bytes.Reader) (*net.IPNet, error) {
+	var length int
+	if b, err := r.ReadByte(); err != nil {
+		return nil, fmt.Errorf("prefix length: %w", err)
+	} else {
+		length = int(b)
+	}
+	// TODO: Support IPv6?
+	mask := net.CIDRMask(length, 32)
+	prefix := make([]byte, 4)
+	if _, err := io.ReadFull(r, prefix[:(length+7)/8]); err != nil {
+		return nil, fmt.Errorf("prefix: %w", err)
+	}
+
+	return &net.IPNet{IP: net.IP(prefix), Mask: mask}, nil
+}
+
+type UpdateMessage struct {
+	WirhdrawnRoutes []*net.IPNet
+	PathAttributes  []PathAttribute
+	NLRI            []*net.IPNet
+}
+
+func ParseUpdateMessage(buf []byte) (Message, error) {
+	r := bytes.NewReader(buf)
+	var b [2]byte
+	var m UpdateMessage
+
+	// Withdrawn Routes
+	if _, err := io.ReadFull(r, b[:]); err != nil {
+		return nil, fmt.Errorf("too short update message: %d", len(buf))
+	}
+	// バイト数であって件数ではないし、かつ variable length なので読んでいかないと何件あるかわからない
+	// r.Len() が残りバイト数なので、これの差分で何バイト読んだかわかる
+	stop := r.Len() - int(binary.BigEndian.Uint16(b[:]))
+	for stop < r.Len() {
+		route, err := readIPNet(r)
+		if err != nil {
+			return nil, fmt.Errorf("withdrawn route: %w", err)
+		}
+		m.WirhdrawnRoutes = append(m.WirhdrawnRoutes, route)
+	}
+
+	// Path Attributes
+	if _, err := io.ReadFull(r, b[:]); err != nil {
+		return nil, fmt.Errorf("too short update message (no path attributes): %d", len(buf))
+	}
+	stop = r.Len() - int(binary.BigEndian.Uint16(b[:]))
+	for stop < r.Len() {
+		var a PathAttribute
+		if _, err := a.ReadFrom(r); err != nil {
+			return nil, fmt.Errorf("path attribute: %w", err)
+		}
+		m.PathAttributes = append(m.PathAttributes, a)
+	}
+
+	// NLRI
+	for r.Len() > 0 {
+		route, err := readIPNet(r)
+		if err != nil {
+			return nil, fmt.Errorf("nlri: %w", err)
+		}
+		m.NLRI = append(m.NLRI, route)
+	}
+
+	return m, nil
+}
+
+func (m UpdateMessage) WriteTo(w io.Writer) (int64, error) {
+	return 0, errors.New("not implemented yet")
 }
 
 type NotificationMessage struct {
