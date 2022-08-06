@@ -43,14 +43,8 @@ type UnknownMessage struct {
 func (m UnknownMessage) WriteTo(w io.Writer) (int64, error) {
 	buf := bytes.NewBuffer(make([]byte, 0, headerSize+len(m.Payload)))
 	header := createHeader(uint16(headerSize+len(m.Payload)), m.Type)
-	_, err := buf.Write(header[:])
-	if err != nil {
-		return 0, err
-	}
-	_, err = buf.Write(m.Payload)
-	if err != nil {
-		return 0, err
-	}
+	buf.Write(header[:])
+	buf.Write(m.Payload)
 	return buf.WriteTo(w)
 }
 
@@ -125,29 +119,15 @@ func (m OpenMessage) WriteTo(w io.Writer) (int64, error) {
 	buf := bytes.NewBuffer(make([]byte, 0, size))
 
 	header := createHeader(uint16(size), MessageTypeOpen)
-	_, err := buf.Write(header[:])
-	if err != nil {
-		return 0, err
-	}
+	buf.Write(header[:])
 
-	if _, err := buf.Write([]byte{m.Version}); err != nil {
-		return 0, err
-	}
-	if err := binary.Write(buf, binary.BigEndian, m.MyAS); err != nil {
-		return 0, err
-	}
-	if err := binary.Write(buf, binary.BigEndian, m.HoldTime); err != nil {
-		return 0, err
-	}
-	if _, err := buf.Write(m.BGPID[:]); err != nil {
-		return 0, err
-	}
-	if _, err := buf.Write([]byte{uint8(len(m.OptionalParameters))}); err != nil {
-		return 0, err
-	}
-	if _, err := buf.Write(m.OptionalParameters); err != nil {
-		return 0, err
-	}
+	buf.Write([]byte{m.Version})
+	binary.Write(buf, binary.BigEndian, m.MyAS)
+	binary.Write(buf, binary.BigEndian, m.HoldTime)
+	buf.Write(m.BGPID[:])
+	buf.Write([]byte{uint8(len(m.OptionalParameters))})
+	buf.Write(m.OptionalParameters)
+
 	return buf.WriteTo(w)
 }
 
