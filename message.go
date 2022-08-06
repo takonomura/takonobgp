@@ -190,7 +190,7 @@ func (a *PathAttribute) ReadFrom(r io.Reader) (int64, error) {
 }
 
 func (a *PathAttribute) WriteTo(w io.Writer) (int64, error) {
-	if n, err := w.Write([]byte{byte(a.Flags), a.TypeCode}); err != nil {
+	if n, err := w.Write([]byte{byte(a.Flags), byte(a.TypeCode)}); err != nil {
 		return int64(n), err
 	}
 	total := 2
