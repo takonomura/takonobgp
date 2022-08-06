@@ -156,7 +156,7 @@ func (b AttributeFlags) ExtendedLength() bool {
 
 type PathAttribute struct {
 	Flags    AttributeFlags
-	TypeCode uint8
+	TypeCode AttributeTypeCode
 	Value    []byte
 }
 
@@ -166,7 +166,7 @@ func (a *PathAttribute) ReadFrom(r io.Reader) (int64, error) {
 		return int64(n), fmt.Errorf("path attribute: %w", err)
 	}
 	a.Flags = AttributeFlags(b[0])
-	a.TypeCode = b[1]
+	a.TypeCode = AttributeTypeCode(b[1])
 	total := 2
 	var length uint16
 	if !a.Flags.ExtendedLength() {
