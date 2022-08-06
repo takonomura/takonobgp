@@ -137,8 +137,26 @@ func (m OpenMessage) WriteTo(w io.Writer) (int64, error) {
 	return buf.WriteTo(w)
 }
 
+type AttributeFlags byte
+
+func (b AttributeFlags) Optional() bool {
+	return b&0b10000000 != 0
+}
+
+func (b AttributeFlags) Transitive() bool {
+	return b&0b01000000 != 0
+}
+
+func (b AttributeFlags) Partial() bool {
+	return b&0b00100000 != 0
+}
+
+func (b AttributeFlags) ExtendedLength() bool {
+	return b&0b00010000 != 0
+}
+
 type PathAttribute struct {
-	Flags    byte
+	Flags    AttributeFlags
 	TypeCode uint8
 	Value    []byte
 }
@@ -148,12 +166,11 @@ func (a *PathAttribute) ReadFrom(r io.Reader) (int64, error) {
 	if n, err := io.ReadFull(r, b[:]); err != nil {
 		return int64(n), fmt.Errorf("path attribute: %w", err)
 	}
-	a.Flags = b[0]
+	a.Flags = AttributeFlags(b[0])
 	a.TypeCode = b[1]
-	extendedLength := a.Flags&0b00010000 != 0
 	total := 2
 	var length uint16
-	if !extendedLength {
+	if !a.Flags.ExtendedLength() {
 		if n, err := io.ReadFull(r, b[:1]); err != nil {
 			return 2 + int64(n), fmt.Errorf("path attribute length: %w", err)
 		}
@@ -174,13 +191,12 @@ func (a *PathAttribute) ReadFrom(r io.Reader) (int64, error) {
 }
 
 func (a *PathAttribute) WriteTo(w io.Writer) (int64, error) {
-	if n, err := w.Write([]byte{a.Flags, a.TypeCode}); err != nil {
+	if n, err := w.Write([]byte{byte(a.Flags), a.TypeCode}); err != nil {
 		return int64(n), err
 	}
 	total := 2
 
-	extendedLength := a.Flags&0b00010000 != 0
-	if !extendedLength {
+	if !a.Flags.ExtendedLength() {
 		if n, err := w.Write([]byte{uint8(len(a.Value))}); err != nil {
 			return int64(total + n), fmt.Errorf("path attribute length: %w", err)
 		}
@@ -203,11 +219,20 @@ func (a *PathAttribute) WriteTo(w io.Writer) (int64, error) {
 
 func (a PathAttribute) Len() int {
 	total := 3 + len(a.Value)
-	extendedLength := a.Flags&0b00010000 != 0
-	if extendedLength {
+	if a.Flags.ExtendedLength() {
 		total += 1
 	}
 	return total
+}
+
+func prefixByteLength(maskLength int) int {
+	// 収まる最小のバイト数
+	// len = 0       : 0 byte
+	// len = 1 ~ 8   : 1 byte
+	// len = 9 ~ 16  : 2 byte
+	// len = 17 ~ 24 : 3 byte
+	// len = 25 ~ 32 : 4 byte
+	return (maskLength + 7) / 8
 }
 
 func readIPNet(r *bytes.Reader) (*net.IPNet, error) {
@@ -220,7 +245,7 @@ func readIPNet(r *bytes.Reader) (*net.IPNet, error) {
 	// TODO: Support IPv6?
 	mask := net.CIDRMask(length, 32)
 	prefix := make([]byte, 4)
-	if _, err := io.ReadFull(r, prefix[:(length+7)/8]); err != nil {
+	if _, err := io.ReadFull(r, prefix[:prefixByteLength(length)]); err != nil {
 		return nil, fmt.Errorf("prefix: %w", err)
 	}
 
