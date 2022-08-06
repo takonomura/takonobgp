@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -252,6 +251,19 @@ func readIPNet(r *bytes.Reader) (*net.IPNet, error) {
 	return &net.IPNet{IP: net.IP(prefix), Mask: mask}, nil
 }
 
+func writeIPNet(w io.Writer, n *net.IPNet) (int, error) {
+	length, _ := n.Mask.Size()
+	b := make([]byte, 1+prefixByteLength(length))
+	b[0] = uint8(length)
+	copy(b[1:], n.IP)
+	return w.Write(b)
+}
+
+func ipNetLen(n *net.IPNet) int {
+	length, _ := n.Mask.Size()
+	return 1 + prefixByteLength(length)
+}
+
 type UpdateMessage struct {
 	WirhdrawnRoutes []*net.IPNet
 	PathAttributes  []PathAttribute
@@ -304,7 +316,41 @@ func ParseUpdateMessage(buf []byte) (Message, error) {
 }
 
 func (m UpdateMessage) WriteTo(w io.Writer) (int64, error) {
-	return 0, errors.New("not implemented yet")
+	var withdrawnLength int
+	for _, r := range m.WirhdrawnRoutes {
+		withdrawnLength += ipNetLen(r)
+	}
+	var pathAttributesLength int
+	for _, a := range m.PathAttributes {
+		pathAttributesLength += a.Len()
+	}
+	var nlriLength int
+	for _, r := range m.NLRI {
+		nlriLength += ipNetLen(r)
+	}
+
+	// 4 byte = Withdrawn Routes Length (2 byte) + Path Attributes Length (2 byte)
+	size := headerSize + 4 + withdrawnLength + pathAttributesLength + nlriLength
+	buf := bytes.NewBuffer(make([]byte, 0, size))
+
+	header := createHeader(uint16(size), MessageTypeUpdate)
+	buf.Write(header[:])
+
+	binary.Write(buf, binary.BigEndian, uint16(withdrawnLength))
+	for _, r := range m.WirhdrawnRoutes {
+		writeIPNet(buf, r)
+	}
+
+	binary.Write(buf, binary.BigEndian, uint16(pathAttributesLength))
+	for _, a := range m.PathAttributes {
+		a.WriteTo(buf)
+	}
+
+	for _, r := range m.NLRI {
+		writeIPNet(buf, r)
+	}
+
+	return buf.WriteTo(w)
 }
 
 type NotificationMessage struct {
