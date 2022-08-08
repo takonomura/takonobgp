@@ -37,6 +37,7 @@ func main() {
 			NeighborAddress: getenvOrDefault("NEIGHBOR_ADDR", "10.0.0.2"),
 
 			HoldTime: 180,
+			State:    StateIdle,
 
 			eventChan: make(chan Event, 10),
 			stopChan:  make(chan struct{}),
