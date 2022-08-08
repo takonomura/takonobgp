@@ -45,7 +45,7 @@ func (p *Peer) Run(ctx context.Context) error {
 	for {
 		select {
 		case e := <-p.eventChan:
-			log.Printf("event: %+v", e)
+			log.Printf("event: %T (%+v)", e, e)
 			if err := e.Do(p); err != nil {
 				return err
 			}
