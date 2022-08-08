@@ -35,19 +35,21 @@ type Peer struct {
 }
 
 func (p *Peer) Run(ctx context.Context) error {
+	defer func() {
+		if p.conn != nil {
+			p.conn.Close()
+		}
+		close(p.stopChan)
+		// TODO: Wait all related goroutines
+	}()
 	for {
 		select {
 		case e := <-p.eventChan:
 			log.Printf("event: %+v", e)
 			if err := e.Do(p); err != nil {
-				log.Printf("processing event: %v", err)
+				return err
 			}
 		case <-ctx.Done():
-			if p.conn != nil {
-				p.conn.Close()
-			}
-			close(p.stopChan)
-			// TODO: Wait all related goroutines
 			return nil
 		}
 	}
