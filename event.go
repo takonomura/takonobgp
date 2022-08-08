@@ -96,8 +96,8 @@ func (e KeepaliveMessageEvent) Do(p *Peer) error {
 		if err := p.sendMessage(UpdateMessage{
 			PathAttributes: []PathAttribute{
 				OriginAttributeIGP.ToPathAttribute(),
-				ASPathAttribute{Sequence: true, Segments: []uint16{p.MyAS}}.ToPathAttribute(),
-				NextHopAttribute(p.ID[:]).ToPathAttribute(),
+				ASPath{Sequence: true, Segments: []uint16{p.MyAS}}.ToPathAttribute(),
+				NextHop(p.ID[:]).ToPathAttribute(),
 			},
 			NLRI: []*net.IPNet{
 				route,

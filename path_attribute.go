@@ -14,29 +14,29 @@ const (
 	// TODO: Other attributes
 )
 
-type OriginAttribute uint8
+type Origin uint8
 
 const (
-	OriginAttributeIGP OriginAttribute = iota
+	OriginAttributeIGP Origin = iota
 	OriginAttributeEGP
 	OriginAttributeIncomplete
 )
 
-func OriginFromPathAttribute(a PathAttribute) (OriginAttribute, error) {
+func OriginFromPathAttribute(a PathAttribute) (Origin, error) {
 	if a.TypeCode != AttributeTypeOrigin {
 		return 0, fmt.Errorf("invalid type code: %d", a.TypeCode)
 	}
 	if len(a.Value) != 1 {
 		return 0, fmt.Errorf("invalid attribute value length: %d", len(a.Value))
 	}
-	origin := OriginAttribute(a.Value[0])
+	origin := Origin(a.Value[0])
 	if origin > 3 {
 		return 0, fmt.Errorf("invalid origin value: %v", origin)
 	}
 	return origin, nil
 }
 
-func (a OriginAttribute) ToPathAttribute() PathAttribute {
+func (a Origin) ToPathAttribute() PathAttribute {
 	return PathAttribute{
 		Flags:    0b01000000, // well-known transitive
 		TypeCode: AttributeTypeOrigin,
@@ -44,17 +44,17 @@ func (a OriginAttribute) ToPathAttribute() PathAttribute {
 	}
 }
 
-type ASPathAttribute struct {
+type ASPath struct {
 	Sequence bool
 	Segments []uint16
 }
 
-func ASPathFromPathAttribute(a PathAttribute) (ASPathAttribute, error) {
+func ASPathFromPathAttribute(a PathAttribute) (ASPath, error) {
 	if a.TypeCode != AttributeTypeASPath {
-		return ASPathAttribute{}, fmt.Errorf("invalid type code: %d", a.TypeCode)
+		return ASPath{}, fmt.Errorf("invalid type code: %d", a.TypeCode)
 	}
 	if len(a.Value) < 2 {
-		return ASPathAttribute{}, fmt.Errorf("too short AS_PATH attribute: %d", len(a.Value))
+		return ASPath{}, fmt.Errorf("too short AS_PATH attribute: %d", len(a.Value))
 	}
 	length := int(a.Value[1])
 	segments := make([]uint16, length)
@@ -62,13 +62,13 @@ func ASPathFromPathAttribute(a PathAttribute) (ASPathAttribute, error) {
 		offset := 2 + i*2
 		segments[i] = binary.BigEndian.Uint16(a.Value[offset : offset+2])
 	}
-	return ASPathAttribute{
+	return ASPath{
 		Sequence: a.Value[0] == 2,
 		Segments: segments,
 	}, nil
 }
 
-func (a ASPathAttribute) ToPathAttribute() PathAttribute {
+func (a ASPath) ToPathAttribute() PathAttribute {
 	b := make([]byte, 2+len(a.Segments)*2)
 	if a.Sequence {
 		b[0] = 2
@@ -87,19 +87,19 @@ func (a ASPathAttribute) ToPathAttribute() PathAttribute {
 	}
 }
 
-type NextHopAttribute []byte
+type NextHop []byte
 
-func NextHopFromPathAttribute(a PathAttribute) (NextHopAttribute, error) {
+func NextHopFromPathAttribute(a PathAttribute) (NextHop, error) {
 	if a.TypeCode != AttributeTypeNextHop {
 		return nil, fmt.Errorf("invalid type code: %d", a.TypeCode)
 	}
 	if len(a.Value) != 4 {
 		return nil, fmt.Errorf("invalid next hop length: %d", len(a.Value))
 	}
-	return NextHopAttribute(a.Value), nil
+	return NextHop(a.Value), nil
 }
 
-func (a NextHopAttribute) ToPathAttribute() PathAttribute {
+func (a NextHop) ToPathAttribute() PathAttribute {
 	return PathAttribute{
 		Flags:    0b01000000, // well-known transitive
 		TypeCode: AttributeTypeNextHop,
