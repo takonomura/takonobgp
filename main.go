@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net"
 	"os"
@@ -29,13 +30,21 @@ func main() {
 	var id [4]byte
 	copy(id[:], routerID)
 
-	p := &Peer{
-		MyAS:     uint16(myAS),
-		ID:       id,
-		HoldTime: 180,
-	}
 	for {
-		log.Printf("connect: %v", p.connect("tcp", getenvOrDefault("NEIGHBOR_ADDR", "10.0.0.2:179")))
+		p := &Peer{
+			MyAS:            uint16(myAS),
+			ID:              id,
+			NeighborAddress: getenvOrDefault("NEIGHBOR_ADDR", "10.0.0.2"),
+
+			HoldTime: 180,
+
+			eventChan: make(chan Event, 10),
+			stopChan:  make(chan struct{}),
+		}
+		p.eventChan <- ManualStartEvent{}
+		if err := p.Run(context.TODO()); err != nil {
+			log.Printf("error: %v", err)
+		}
 		time.Sleep(time.Second)
 	}
 }
