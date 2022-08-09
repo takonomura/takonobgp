@@ -116,11 +116,11 @@ func (e KeepaliveMessageEvent) Do(p *Peer) error {
 		p.setState(StateEstablished)
 		go p.startHoldTimer()
 		go p.startKeepaliveTimer()
-		p.LocalRIB.OnRemoveFuncs = append(p.LocalRIB.OnRemoveFuncs, p.onLocalRIBRemove)
-		p.LocalRIB.OnUpdateFuncs = append(p.LocalRIB.OnUpdateFuncs, p.onLocalRIBUpdate)
+		p.LocalRIB.OnRemove(p.onLocalRIBRemove)
+		p.LocalRIB.OnUpdate(p.onLocalRIBUpdate)
 
 		log.Printf("sending initial update messages")
-		for e := range p.LocalRIB.Entries {
+		for _, e := range p.LocalRIB.Entries() {
 			pathAttributes := []PathAttribute{
 				e.Origin.ToPathAttribute(),
 				ASPath{

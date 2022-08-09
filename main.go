@@ -36,9 +36,7 @@ func main() {
 			ID:              id,
 			NeighborAddress: getenvOrDefault("NEIGHBOR_ADDR", "10.0.0.2"),
 
-			LocalRIB: &RIB{
-				Entries: make(map[*RIBEntry]struct{}),
-			},
+			LocalRIB: NewRIB(),
 
 			HoldTime: 180,
 			State:    StateIdle,

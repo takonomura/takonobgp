@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sync"
 )
 
 type RIBEntry struct {
@@ -17,15 +18,43 @@ type RIBEntry struct {
 }
 
 type RIB struct {
-	// TODO: うまく lock 取るなりして複数 goroutine からアクセスしても安全にしたい
-	// 現時点では Peer のメイン goroutine からしかアクセスされない
-	Entries       map[*RIBEntry]struct{}
-	OnRemoveFuncs []func(*RIBEntry) error
-	OnUpdateFuncs []func(prev, curr *RIBEntry) error
+	mutex         *sync.RWMutex
+	entries       map[*RIBEntry]struct{}
+	onRemoveFuncs []func(*RIBEntry) error
+	onUpdateFuncs []func(prev, curr *RIBEntry) error
+}
+
+func NewRIB() *RIB {
+	return &RIB{
+		mutex:   new(sync.RWMutex),
+		entries: make(map[*RIBEntry]struct{}),
+	}
+}
+
+func (rib *RIB) OnRemove(fn func(*RIBEntry) error) int {
+	rib.mutex.Lock()
+	defer rib.mutex.Unlock()
+
+	rib.onRemoveFuncs = append(rib.onRemoveFuncs, fn)
+	return len(rib.onRemoveFuncs) - 1
+}
+
+func (rib *RIB) OnUpdate(fn func(prev, curr *RIBEntry) error) int {
+	rib.mutex.Lock()
+	defer rib.mutex.Unlock()
+
+	rib.onUpdateFuncs = append(rib.onUpdateFuncs, fn)
+	return len(rib.onUpdateFuncs) - 1
 }
 
 func (rib *RIB) Find(prefix *net.IPNet) *RIBEntry {
-	for e := range rib.Entries {
+	rib.mutex.RLock()
+	defer rib.mutex.RUnlock()
+	return rib.find(prefix)
+}
+
+func (rib *RIB) find(prefix *net.IPNet) *RIBEntry {
+	for e := range rib.entries {
 		if e.Prefix.IP.Equal(prefix.IP) && bytes.Equal([]byte(prefix.Mask), []byte(e.Prefix.Mask)) {
 			return e
 		}
@@ -34,12 +63,15 @@ func (rib *RIB) Find(prefix *net.IPNet) *RIBEntry {
 }
 
 func (rib *RIB) Remove(prefix *net.IPNet) error {
-	e := rib.Find(prefix)
+	rib.mutex.Lock()
+	defer rib.mutex.Unlock()
+
+	e := rib.find(prefix)
 	if e == nil {
 		return fmt.Errorf("no entry to remove: %v", prefix)
 	}
-	delete(rib.Entries, e)
-	for _, onRemove := range rib.OnRemoveFuncs {
+	delete(rib.entries, e)
+	for _, onRemove := range rib.onRemoveFuncs {
 		if err := onRemove(e); err != nil {
 			return err
 		}
@@ -48,12 +80,15 @@ func (rib *RIB) Remove(prefix *net.IPNet) error {
 }
 
 func (rib *RIB) Update(e *RIBEntry) error {
-	prev := rib.Find(e.Prefix)
+	rib.mutex.Lock()
+	defer rib.mutex.Unlock()
+
+	prev := rib.find(e.Prefix)
 	if prev != nil {
-		delete(rib.Entries, prev)
+		delete(rib.entries, prev)
 	}
-	rib.Entries[e] = struct{}{}
-	for _, onUpdate := range rib.OnUpdateFuncs {
+	rib.entries[e] = struct{}{}
+	for _, onUpdate := range rib.onUpdateFuncs {
 		if err := onUpdate(prev, e); err != nil {
 			return err
 		}
@@ -100,8 +135,22 @@ func UpdateMessageToRIBEntries(m UpdateMessage) ([]*RIBEntry, error) {
 	return entries, nil
 }
 
+func (rib *RIB) Entries() []*RIBEntry {
+	rib.mutex.RLock()
+	defer rib.mutex.RUnlock()
+
+	s := make([]*RIBEntry, 0, len(rib.entries))
+	for e := range rib.entries {
+		s = append(s, e)
+	}
+	return s
+}
+
 func (rib *RIB) Print(w io.Writer) {
-	for e := range rib.Entries {
+	rib.mutex.RLock()
+	defer rib.mutex.RUnlock()
+
+	for e := range rib.entries {
 		fmt.Fprintf(w,
 			"- %v (ORIGIN: %v, AS_PATH: %v, NEXTHOP: %v)\n",
 			e.Prefix, e.Origin, e.ASPath.Segments, net.IP(e.NextHop),

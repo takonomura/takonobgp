@@ -11,8 +11,8 @@ type FIBSyncer struct {
 }
 
 func (s *FIBSyncer) Register() {
-	s.RIB.OnRemoveFuncs = append(s.RIB.OnRemoveFuncs, s.onRemove)
-	s.RIB.OnUpdateFuncs = append(s.RIB.OnUpdateFuncs, s.onUpdate)
+	s.RIB.OnRemove(s.onRemove)
+	s.RIB.OnUpdate(s.onUpdate)
 }
 
 func (s *FIBSyncer) onRemove(e *RIBEntry) error {
@@ -39,7 +39,7 @@ func (s *FIBSyncer) onUpdate(prev, curr *RIBEntry) error {
 }
 
 func (s *FIBSyncer) Cleanup() {
-	for e := range s.RIB.Entries {
+	for _, e := range s.RIB.Entries() {
 		if e.NextHop == nil {
 			continue
 		}
