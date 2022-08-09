@@ -6,7 +6,7 @@ nodes:
       - { name: net1, type: direct, args: C1#net0 }
       #- { name: net2, type: direct, args: C3#net0 }
     mounts:
-      - ./config.json:/config.json:ro
+      - $PWD/config.json:/config.json:ro
   - name: R2
     image: docker.io/slankdev/frr
     interfaces:
