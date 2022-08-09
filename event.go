@@ -30,7 +30,7 @@ type (
 	KeepaliveTimerExpireEvent struct{}
 
 	LocalRIBUpdateEvent struct {
-		Removed []*net.IPNet
+		Removed []net.IPNet
 		Updated []*RIBEntry
 	}
 )
@@ -150,14 +150,14 @@ func (e KeepaliveMessageEvent) Do(p *Peer) error {
 					Sequence: e.ASPath.Sequence,
 					Segments: append([]uint16{p.MyAS}, e.ASPath.Segments...),
 				}.ToPathAttribute(),
-				e.NextHop.ToPathAttribute(),
+				NextHop(e.NextHop).ToPathAttribute(),
 			}
 			if e.NextHop == nil {
 				pathAttributes[2] = NextHop(p.RouterID[:]).ToPathAttribute()
 			}
 			if err := p.sendMessage(UpdateMessage{
 				PathAttributes: append(pathAttributes, e.OtherAttributes...),
-				NLRI:           []*net.IPNet{e.Prefix},
+				NLRI:           []net.IPNet{e.Prefix},
 			}); err != nil {
 				return fmt.Errorf("send update message: %w", err)
 			}
@@ -203,14 +203,14 @@ func (e LocalRIBUpdateEvent) Do(p *Peer) error {
 				Sequence: e.ASPath.Sequence,
 				Segments: append([]uint16{p.MyAS}, e.ASPath.Segments...),
 			}.ToPathAttribute(),
-			e.NextHop.ToPathAttribute(),
+			NextHop(e.NextHop).ToPathAttribute(),
 		}
 		if e.NextHop == nil {
 			pathAttributes[2] = NextHop(p.RouterID[:]).ToPathAttribute()
 		}
 		if err := p.sendMessage(UpdateMessage{
 			PathAttributes: append(pathAttributes, e.OtherAttributes...),
-			NLRI:           []*net.IPNet{e.Prefix},
+			NLRI:           []net.IPNet{e.Prefix},
 		}); err != nil {
 			return fmt.Errorf("send update message: %w", err)
 		}

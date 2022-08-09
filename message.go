@@ -234,23 +234,23 @@ func prefixByteLength(maskLength int) int {
 	return (maskLength + 7) / 8
 }
 
-func readIPNet(r *bytes.Reader, bits int) (*net.IPNet, error) {
+func readIPNet(r *bytes.Reader, bits int) (net.IPNet, error) {
 	var length int
 	if b, err := r.ReadByte(); err != nil {
-		return nil, fmt.Errorf("prefix length: %w", err)
+		return net.IPNet{}, fmt.Errorf("prefix length: %w", err)
 	} else {
 		length = int(b)
 	}
 	mask := net.CIDRMask(length, bits)
 	prefix := make([]byte, bits/8)
 	if _, err := io.ReadFull(r, prefix[:prefixByteLength(length)]); err != nil {
-		return nil, fmt.Errorf("prefix: %w", err)
+		return net.IPNet{}, fmt.Errorf("prefix: %w", err)
 	}
 
-	return &net.IPNet{IP: net.IP(prefix), Mask: mask}, nil
+	return net.IPNet{IP: net.IP(prefix), Mask: mask}, nil
 }
 
-func writeIPNet(w io.Writer, n *net.IPNet) (int, error) {
+func writeIPNet(w io.Writer, n net.IPNet) (int, error) {
 	length, _ := n.Mask.Size()
 	b := make([]byte, 1+prefixByteLength(length))
 	b[0] = uint8(length)
@@ -258,15 +258,15 @@ func writeIPNet(w io.Writer, n *net.IPNet) (int, error) {
 	return w.Write(b)
 }
 
-func ipNetLen(n *net.IPNet) int {
+func ipNetLen(n net.IPNet) int {
 	length, _ := n.Mask.Size()
 	return 1 + prefixByteLength(length)
 }
 
 type UpdateMessage struct {
-	WirhdrawnRoutes []*net.IPNet
+	WirhdrawnRoutes []net.IPNet
 	PathAttributes  []PathAttribute
-	NLRI            []*net.IPNet
+	NLRI            []net.IPNet
 }
 
 func ParseUpdateMessage(buf []byte) (Message, error) {
