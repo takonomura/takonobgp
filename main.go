@@ -58,41 +58,15 @@ func main() {
 		log.Printf("current RIB:")
 		p.LocalRIB.Print(os.Stderr)
 
-		p.LocalRIB.OnRemoveFuncs = append(p.LocalRIB.OnRemoveFuncs, func(e *RIBEntry) error {
-			log.Printf("RIB removed: %v", e)
-			p.LocalRIB.Print(os.Stderr)
-			if e.NextHop == nil {
-				return nil
-			}
-			return ipRoute("del", e.Prefix.String())
-		})
-		p.LocalRIB.OnUpdateFuncs = append(p.LocalRIB.OnUpdateFuncs, func(prev, curr *RIBEntry) error {
-			log.Printf("RIB updated: %v -> %v", prev, curr)
-			p.LocalRIB.Print(os.Stderr)
-			if prev != nil && prev.NextHop != nil {
-				if err := ipRoute("del", prev.Prefix.String()); err != nil {
-					return err
-				}
-			}
-			if curr.NextHop == nil {
-				return nil
-			}
-			return ipRoute("add", curr.Prefix.String(), "via", net.IP(curr.NextHop).String())
-		})
+		syncer := FIBSyncer{RIB: p.LocalRIB}
+		syncer.Register()
 
 		p.eventChan <- ManualStartEvent{}
 		if err := p.Run(context.TODO()); err != nil {
 			log.Printf("error: %v", err)
 		}
 
-		for e := range p.LocalRIB.Entries {
-			if e.NextHop == nil {
-				continue
-			}
-			if err := ipRoute("del", e.Prefix.String()); err != nil {
-				log.Printf("cleaning FIB: %v", err)
-			}
-		}
+		syncer.Cleanup()
 
 		time.Sleep(time.Second)
 	}
