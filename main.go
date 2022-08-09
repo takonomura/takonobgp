@@ -51,7 +51,7 @@ func main() {
 		p.LocalRIB.Update(&RIBEntry{
 			Prefix:  route,
 			Origin:  OriginAttributeIGP,
-			ASPath:  ASPath{Sequence: true, Segments: []uint16{p.MyAS}},
+			ASPath:  ASPath{Sequence: true, Segments: []uint16{}},
 			NextHop: nil,
 		})
 		p.LocalRIB.OnRemoveFuncs = append(p.LocalRIB.OnRemoveFuncs, func(e *RIBEntry) error {
