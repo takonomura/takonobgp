@@ -132,7 +132,7 @@ func (rib *RIB) Update(e *RIBEntry) error {
 	return nil
 }
 
-func UpdateMessageToRIBEntries(m UpdateMessage) ([]*RIBEntry, error) {
+func UpdateMessageToRIBEntries(m UpdateMessage, source *Peer) ([]*RIBEntry, error) {
 	var (
 		origin  Origin
 		asPath  ASPath
@@ -166,6 +166,7 @@ func UpdateMessageToRIBEntries(m UpdateMessage) ([]*RIBEntry, error) {
 			ASPath:          asPath,
 			NextHop:         nextHop,
 			OtherAttributes: others, // TODO: Copy other attributes?
+			Source:          source,
 		}
 	}
 	return entries, nil

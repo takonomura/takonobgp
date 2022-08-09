@@ -95,7 +95,7 @@ func (e UpdateMessageEvent) Do(p *Peer) error {
 			return err
 		}
 	}
-	es, err := UpdateMessageToRIBEntries(e.Message)
+	es, err := UpdateMessageToRIBEntries(e.Message, p)
 	if err != nil {
 		return err
 	}
