@@ -36,16 +36,30 @@ func main() {
 			ID:              id,
 			NeighborAddress: getenvOrDefault("NEIGHBOR_ADDR", "10.0.0.2"),
 
+			LocalRIB: &RIB{
+				Entries: make(map[*RIBEntry]struct{}),
+			},
+
 			HoldTime: 180,
 			State:    StateIdle,
 
 			eventChan: make(chan Event, 10),
 			stopChan:  make(chan struct{}),
 		}
+
+		_, route, _ := net.ParseCIDR("10.1.0.0/24") // TODO: Configurable
+		p.LocalRIB.Update(&RIBEntry{
+			Prefix:  route,
+			Origin:  OriginAttributeIGP,
+			ASPath:  ASPath{Sequence: true, Segments: []uint16{p.MyAS}},
+			NextHop: NextHop(p.ID[:]),
+		})
+
 		p.eventChan <- ManualStartEvent{}
 		if err := p.Run(context.TODO()); err != nil {
 			log.Printf("error: %v", err)
 		}
+
 		time.Sleep(time.Second)
 	}
 }

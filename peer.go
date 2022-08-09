@@ -23,6 +23,8 @@ type Peer struct {
 	ID              [4]byte
 	NeighborAddress string
 
+	LocalRIB *RIB
+
 	HoldTime uint16
 
 	State     State
@@ -118,4 +120,20 @@ func (p *Peer) startKeepaliveTimer() {
 			}
 		}
 	}()
+}
+
+func (p *Peer) onLocalRIBRemove(e *RIBEntry) error {
+	log.Printf("RIB removed: %v", e)
+	p.eventChan <- LocalRIBUpdateEvent{
+		Removed: []*net.IPNet{e.Prefix},
+	}
+	return nil
+}
+
+func (p *Peer) onLocalRIBUpdate(prev, curr *RIBEntry) error {
+	log.Printf("RIB updated: %v -> %v", prev, curr)
+	p.eventChan <- LocalRIBUpdateEvent{
+		Updated: []*RIBEntry{curr},
+	}
+	return nil
 }

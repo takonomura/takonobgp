@@ -28,6 +28,11 @@ type (
 
 	HoldTimerExpireEvent      struct{}
 	KeepaliveTimerExpireEvent struct{}
+
+	LocalRIBUpdateEvent struct {
+		Removed []*net.IPNet
+		Updated []*RIBEntry
+	}
 )
 
 func (e ManualStartEvent) Do(p *Peer) error {
@@ -76,7 +81,28 @@ func (e UpdateMessageEvent) Do(p *Peer) error {
 	if p.State != StateEstablished {
 		return fmt.Errorf("unexpected state: %v", p.State)
 	}
-	// TODO: RIB に書き込む
+	for _, r := range e.Message.WirhdrawnRoutes {
+		// TODO: Check the entry is from the peer
+		if err := p.LocalRIB.Remove(r); err != nil {
+			return err
+		}
+	}
+	es, err := UpdateMessageToRIBEntries(e.Message)
+	if err != nil {
+		return err
+	}
+	for _, e := range es {
+		curr := p.LocalRIB.Find(e.Prefix)
+		if curr != nil {
+			if len(curr.ASPath.Segments) < len(e.ASPath.Segments) {
+				log.Printf("ignore update for %v (entry in RIB has priority)", e.Prefix)
+				continue
+			}
+		}
+		if err := p.LocalRIB.Update(e); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -90,20 +116,28 @@ func (e KeepaliveMessageEvent) Do(p *Peer) error {
 		p.setState(StateEstablished)
 		go p.startHoldTimer()
 		go p.startKeepaliveTimer()
+		p.LocalRIB.OnRemoveFuncs = append(p.LocalRIB.OnRemoveFuncs, p.onLocalRIBRemove)
+		p.LocalRIB.OnUpdateFuncs = append(p.LocalRIB.OnUpdateFuncs, p.onLocalRIBUpdate)
 
-		log.Printf("sending update message")
-		_, route, _ := net.ParseCIDR("10.1.0.0/24") // TODO: Configurable
-		if err := p.sendMessage(UpdateMessage{
-			PathAttributes: []PathAttribute{
-				OriginAttributeIGP.ToPathAttribute(),
-				ASPath{Sequence: true, Segments: []uint16{p.MyAS}}.ToPathAttribute(),
-				NextHop(p.ID[:]).ToPathAttribute(),
-			},
-			NLRI: []*net.IPNet{
-				route,
-			},
-		}); err != nil {
-			return fmt.Errorf("send update message: %w", err)
+		log.Printf("sending initial update messages")
+		for e := range p.LocalRIB.Entries {
+			pathAttributes := []PathAttribute{
+				e.Origin.ToPathAttribute(),
+				ASPath{
+					Sequence: e.ASPath.Sequence,
+					Segments: append([]uint16{p.MyAS}, e.ASPath.Segments...),
+				}.ToPathAttribute(),
+				e.NextHop.ToPathAttribute(),
+			}
+			if e.NextHop == nil {
+				pathAttributes[2] = NextHop(p.ID[:]).ToPathAttribute()
+			}
+			if err := p.sendMessage(UpdateMessage{
+				PathAttributes: append(pathAttributes, e.OtherAttributes...),
+				NLRI:           []*net.IPNet{e.Prefix},
+			}); err != nil {
+				return fmt.Errorf("send update message: %w", err)
+			}
 		}
 		return nil
 	case StateEstablished:
@@ -122,6 +156,38 @@ func (e HoldTimerExpireEvent) Do(p *Peer) error {
 func (e KeepaliveTimerExpireEvent) Do(p *Peer) error {
 	if err := p.sendMessage(KeepaliveMessage{}); err != nil {
 		return fmt.Errorf("send keepalive message: %w", err)
+	}
+	return nil
+}
+
+func (e LocalRIBUpdateEvent) Do(p *Peer) error {
+	// Withdrawn
+	if len(e.Removed) > 0 {
+		if err := p.sendMessage(UpdateMessage{
+			WirhdrawnRoutes: e.Removed,
+		}); err != nil {
+			return fmt.Errorf("send withdrawn update message: %w", err)
+		}
+	}
+	// Update
+	for _, e := range e.Updated {
+		pathAttributes := []PathAttribute{
+			e.Origin.ToPathAttribute(),
+			ASPath{
+				Sequence: e.ASPath.Sequence,
+				Segments: append([]uint16{p.MyAS}, e.ASPath.Segments...),
+			}.ToPathAttribute(),
+			e.NextHop.ToPathAttribute(),
+		}
+		if e.NextHop == nil {
+			pathAttributes[2] = NextHop(p.ID[:]).ToPathAttribute()
+		}
+		if err := p.sendMessage(UpdateMessage{
+			PathAttributes: append(pathAttributes, e.OtherAttributes...),
+			NLRI:           []*net.IPNet{e.Prefix},
+		}); err != nil {
+			return fmt.Errorf("send update message: %w", err)
+		}
 	}
 	return nil
 }
