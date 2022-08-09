@@ -81,6 +81,15 @@ func main() {
 			log.Printf("error: %v", err)
 		}
 
+		for e := range p.LocalRIB.Entries {
+			if e.NextHop == nil {
+				continue
+			}
+			if err := ipRoute("del", e.Prefix.String()); err != nil {
+				log.Printf("cleaning FIB: %v", err)
+			}
+		}
+
 		time.Sleep(time.Second)
 	}
 }
