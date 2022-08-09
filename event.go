@@ -186,10 +186,15 @@ func (e KeepaliveTimerExpireEvent) Do(p *Peer) error {
 func (e LocalRIBUpdateEvent) Do(p *Peer) error {
 	// Withdrawn
 	if len(e.Removed) > 0 {
-		if err := p.sendMessage(UpdateMessage{
-			WirhdrawnRoutes: e.Removed,
-		}); err != nil {
-			return fmt.Errorf("send withdrawn update message: %w", err)
+		for _, r := range e.Removed {
+			if len(r.IP) != 4 {
+				continue // TODO: Non IPv4
+			}
+			if err := p.sendMessage(UpdateMessage{
+				WirhdrawnRoutes: []*net.IPNet{r},
+			}); err != nil {
+				return fmt.Errorf("send withdrawn update message: %w", err)
+			}
 		}
 	}
 	// Update
