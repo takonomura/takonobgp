@@ -108,8 +108,8 @@ func ParseOpenMessage(buf []byte) (Message, error) {
 	}
 	var id [4]byte
 	copy(id[:], buf[5:9])
-	opt := make([]byte, buf[10])
-	copy(opt, buf[10:10+buf[10]])
+	opt := make([]byte, buf[9])
+	copy(opt, buf[10:10+buf[9]])
 	return OpenMessage{
 		Version:            buf[0],
 		MyAS:               binary.BigEndian.Uint16(buf[1:3]),
