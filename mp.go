@@ -35,7 +35,7 @@ func NLRISize(afi AFI, safi SAFI) int {
 type MPReachNLRI struct {
 	AFI     AFI
 	SAFI    SAFI
-	NextHop net.IP
+	NextHop []net.IP
 	NLRI    []*net.IPNet
 }
 
@@ -46,11 +46,19 @@ func MPReachNLRIFromPathAttribute(a PathAttribute) (MPReachNLRI, error) {
 	if len(a.Value) < 4 {
 		return MPReachNLRI{}, fmt.Errorf("invalid length: %d", len(a.Value))
 	}
+
 	v := MPReachNLRI{
-		AFI:     AFI(binary.BigEndian.Uint16(a.Value[0:2])),
-		SAFI:    SAFI(a.Value[2]),
-		NextHop: net.IP(a.Value[4 : 4+a.Value[3]]),
+		AFI:  AFI(binary.BigEndian.Uint16(a.Value[0:2])),
+		SAFI: SAFI(a.Value[2]),
 	}
+
+	nextHopSize := (NLRISize(v.AFI, v.SAFI) / 8)
+	v.NextHop = make([]net.IP, a.Value[3]/byte(nextHopSize))
+	for i := 0; i < len(v.NextHop); i++ {
+		offset := 4 + nextHopSize*i
+		v.NextHop[i] = net.IP(a.Value[offset : offset+nextHopSize])
+	}
+
 	r := bytes.NewReader(a.Value[5+a.Value[3]:])
 
 	for r.Len() > 0 {
@@ -67,8 +75,10 @@ func MPReachNLRIFromPathAttribute(a PathAttribute) (MPReachNLRI, error) {
 func (a MPReachNLRI) ToPathAttribute() PathAttribute {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.BigEndian, uint16(a.AFI))
-	buf.Write([]byte{uint8(a.SAFI), uint8(len(a.NextHop))})
-	buf.Write([]byte(a.NextHop))
+	buf.Write([]byte{uint8(a.SAFI), uint8(len(a.NextHop) * (NLRISize(a.AFI, a.SAFI) / 8))})
+	for _, a := range a.NextHop {
+		buf.Write([]byte(a))
+	}
 	for _, r := range a.NLRI {
 		writeIPNet(buf, r)
 	}
