@@ -2,11 +2,9 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net"
 	"os"
-	"os/exec"
 	"strconv"
 	"time"
 )
@@ -58,27 +56,22 @@ func main() {
 		})
 		p.LocalRIB.OnRemoveFuncs = append(p.LocalRIB.OnRemoveFuncs, func(e *RIBEntry) error {
 			log.Printf("RIB removed: %v", e)
-			cmd := exec.Command("ip", "route", "del", e.Prefix.String())
-			result, err := cmd.CombinedOutput()
-			if err != nil {
-				return fmt.Errorf("updating FIB: %w", err)
+			if e.NextHop == nil {
+				return nil
 			}
-			if len(result) > 0 {
-				log.Printf("ip route: %s", string(result))
-			}
-			return nil
+			return ipRoute("del", e.Prefix.String())
 		})
 		p.LocalRIB.OnUpdateFuncs = append(p.LocalRIB.OnUpdateFuncs, func(prev, curr *RIBEntry) error {
 			log.Printf("RIB updated: %v -> %v", prev, curr)
-			cmd := exec.Command("ip", "route", "add", curr.Prefix.String(), "via", net.IP(curr.NextHop).String())
-			result, err := cmd.CombinedOutput()
-			if err != nil {
-				return fmt.Errorf("updating FIB: %w", err)
+			if prev != nil && prev.NextHop != nil {
+				if err := ipRoute("del", prev.Prefix.String()); err != nil {
+					return err
+				}
 			}
-			if len(result) > 0 {
-				log.Printf("ip route: %s", string(result))
+			if curr.NextHop == nil {
+				return nil
 			}
-			return nil
+			return ipRoute("add", curr.Prefix.String(), "via", net.IP(curr.NextHop).String())
 		})
 
 		p.eventChan <- ManualStartEvent{}
