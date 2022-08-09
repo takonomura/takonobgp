@@ -112,6 +112,7 @@ func (p *Peer) setState(s State) {
 }
 
 func (p *Peer) sendMessage(m Message) error {
+	log.Printf("send message: %T (%+v)", m, m)
 	_, err := m.WriteTo(p.conn)
 	return err
 }
