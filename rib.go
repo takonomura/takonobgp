@@ -15,6 +15,8 @@ type RIBEntry struct {
 	NextHop NextHop
 
 	OtherAttributes []PathAttribute
+
+	Source *Peer
 }
 
 type RIB struct {
@@ -35,16 +37,44 @@ func (rib *RIB) OnRemove(fn func(*RIBEntry) error) int {
 	rib.mutex.Lock()
 	defer rib.mutex.Unlock()
 
+	for i, f := range rib.onRemoveFuncs {
+		if f == nil {
+			rib.onRemoveFuncs[i] = fn
+			return i
+		}
+	}
+
 	rib.onRemoveFuncs = append(rib.onRemoveFuncs, fn)
 	return len(rib.onRemoveFuncs) - 1
+}
+
+func (rib *RIB) UnregisterOnRemove(id int) {
+	rib.mutex.Lock()
+	defer rib.mutex.Unlock()
+
+	rib.onRemoveFuncs[id] = nil
 }
 
 func (rib *RIB) OnUpdate(fn func(prev, curr *RIBEntry) error) int {
 	rib.mutex.Lock()
 	defer rib.mutex.Unlock()
 
+	for i, f := range rib.onUpdateFuncs {
+		if f == nil {
+			rib.onUpdateFuncs[i] = fn
+			return i
+		}
+	}
+
 	rib.onUpdateFuncs = append(rib.onUpdateFuncs, fn)
 	return len(rib.onUpdateFuncs) - 1
+}
+
+func (rib *RIB) UnregisterOnUpdate(id int) {
+	rib.mutex.Lock()
+	defer rib.mutex.Unlock()
+
+	rib.onUpdateFuncs[id] = nil
 }
 
 func (rib *RIB) Find(prefix *net.IPNet) *RIBEntry {
@@ -74,6 +104,9 @@ func (rib *RIB) Remove(prefix *net.IPNet) error {
 
 	// XXX: ロック取った状態で呼ぶので、こいつらが更に RIB 操作しようとするとデッドロックする
 	for _, onRemove := range rib.onRemoveFuncs {
+		if onRemove == nil {
+			continue
+		}
 		if err := onRemove(e); err != nil {
 			return err
 		}
@@ -93,6 +126,9 @@ func (rib *RIB) Update(e *RIBEntry) error {
 
 	// XXX: ロック取った状態で呼ぶので、こいつらが更に RIB 操作しようとするとデッドロックする
 	for _, onUpdate := range rib.onUpdateFuncs {
+		if onUpdate == nil {
+			continue
+		}
 		if err := onUpdate(prev, e); err != nil {
 			return err
 		}
