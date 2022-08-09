@@ -30,6 +30,9 @@ func (s *HTTPServer) handleRIB(w http.ResponseWriter, r *http.Request) {
 			ASPath:  e.ASPath.Segments,
 			NextHop: net.IP(e.NextHop).String(),
 		}
+		if e.NextHop == nil {
+			res[i].NextHop = ""
+		}
 	}
 
 	b, err := json.MarshalIndent(res, "", "  ")
