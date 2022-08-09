@@ -51,7 +51,7 @@ func MPReachNLRIFromPathAttribute(a PathAttribute) (MPReachNLRI, error) {
 		SAFI:    SAFI(a.Value[2]),
 		NextHop: net.IP(a.Value[4 : 4+a.Value[3]]),
 	}
-	r := bytes.NewReader(a.Value[4+a.Value[3]:])
+	r := bytes.NewReader(a.Value[5+a.Value[3]:])
 
 	for r.Len() > 0 {
 		route, err := readIPNet(r, NLRISize(v.AFI, v.SAFI))
@@ -72,6 +72,7 @@ func (a MPReachNLRI) ToPathAttribute() PathAttribute {
 	for _, r := range a.NLRI {
 		writeIPNet(buf, r)
 	}
+	buf.Write([]byte{0}) // Reserved
 
 	return PathAttribute{
 		Flags:    0b10000000, // optional non-transitive
