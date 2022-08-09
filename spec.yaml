@@ -35,7 +35,7 @@ node_configs:
     cmds:
       - cmd: ip addr add 10.0.0.1/24 dev net0
       - cmd: ip addr add 10.1.0.1/24 dev net1
-      #- cmd: ip addr add 10.3.0.1/24 dev net2
+      - cmd: ip addr add 10.3.0.1/24 dev net2
   - name: R2
     cmds:
       - cmd: /usr/lib/frr/frr start
