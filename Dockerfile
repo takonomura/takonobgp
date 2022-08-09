@@ -16,6 +16,4 @@ RUN apk add --no-cache curl
 
 COPY --from=build /app/takonobgp /takonobgp
 
-COPY config.json ./
-
 ENTRYPOINT ["/takonobgp"]
