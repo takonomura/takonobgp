@@ -172,7 +172,7 @@ func UpdateMessageToRIBEntries(m UpdateMessage, source *Peer) ([]*RIBEntry, erro
 			Prefix:          r,
 			Origin:          origin,
 			ASPath:          asPath,
-			NextHop:         NextHop(mpReach.NextHop),
+			NextHop:         NextHop(mpReach.NextHop[0]),
 			OtherAttributes: others,
 			Source:          source,
 		})
