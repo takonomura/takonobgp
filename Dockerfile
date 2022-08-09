@@ -12,5 +12,7 @@ RUN go build -o takonobgp .
 
 FROM docker.io/library/alpine:latest
 
+RUN apk add --no-cache curl
+
 COPY --from=build /app/takonobgp /takonobgp
 ENTRYPOINT ["/takonobgp"]
