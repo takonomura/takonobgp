@@ -123,7 +123,6 @@ func (p *Peer) startKeepaliveTimer() {
 }
 
 func (p *Peer) onLocalRIBRemove(e *RIBEntry) error {
-	log.Printf("RIB removed: %v", e)
 	p.eventChan <- LocalRIBUpdateEvent{
 		Removed: []*net.IPNet{e.Prefix},
 	}
@@ -131,7 +130,6 @@ func (p *Peer) onLocalRIBRemove(e *RIBEntry) error {
 }
 
 func (p *Peer) onLocalRIBUpdate(prev, curr *RIBEntry) error {
-	log.Printf("RIB updated: %v -> %v", prev, curr)
 	p.eventChan <- LocalRIBUpdateEvent{
 		Updated: []*RIBEntry{curr},
 	}

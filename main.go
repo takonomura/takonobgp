@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"os"
+	"os/exec"
 	"strconv"
 	"time"
 )
@@ -52,7 +54,31 @@ func main() {
 			Prefix:  route,
 			Origin:  OriginAttributeIGP,
 			ASPath:  ASPath{Sequence: true, Segments: []uint16{p.MyAS}},
-			NextHop: NextHop(p.ID[:]),
+			NextHop: nil,
+		})
+		p.LocalRIB.OnRemoveFuncs = append(p.LocalRIB.OnRemoveFuncs, func(e *RIBEntry) error {
+			log.Printf("RIB removed: %v", e)
+			cmd := exec.Command("ip", "route", "del", e.Prefix.String())
+			result, err := cmd.CombinedOutput()
+			if err != nil {
+				return fmt.Errorf("updating FIB: %w", err)
+			}
+			if len(result) > 0 {
+				log.Printf("ip route: %s", string(result))
+			}
+			return nil
+		})
+		p.LocalRIB.OnUpdateFuncs = append(p.LocalRIB.OnUpdateFuncs, func(prev, curr *RIBEntry) error {
+			log.Printf("RIB updated: %v -> %v", prev, curr)
+			cmd := exec.Command("ip", "route", "add", curr.Prefix.String(), "via", net.IP(curr.NextHop).String())
+			result, err := cmd.CombinedOutput()
+			if err != nil {
+				return fmt.Errorf("updating FIB: %w", err)
+			}
+			if len(result) > 0 {
+				log.Printf("ip route: %s", string(result))
+			}
+			return nil
 		})
 
 		p.eventChan <- ManualStartEvent{}
