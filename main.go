@@ -56,6 +56,7 @@ func main() {
 		})
 		p.LocalRIB.OnRemoveFuncs = append(p.LocalRIB.OnRemoveFuncs, func(e *RIBEntry) error {
 			log.Printf("RIB removed: %v", e)
+			p.LocalRIB.Print(os.Stderr)
 			if e.NextHop == nil {
 				return nil
 			}
@@ -63,6 +64,7 @@ func main() {
 		})
 		p.LocalRIB.OnUpdateFuncs = append(p.LocalRIB.OnUpdateFuncs, func(prev, curr *RIBEntry) error {
 			log.Printf("RIB updated: %v -> %v", prev, curr)
+			p.LocalRIB.Print(os.Stderr)
 			if prev != nil && prev.NextHop != nil {
 				if err := ipRoute("del", prev.Prefix.String()); err != nil {
 					return err

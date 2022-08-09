@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net"
 )
 
@@ -97,4 +98,13 @@ func UpdateMessageToRIBEntries(m UpdateMessage) ([]*RIBEntry, error) {
 		}
 	}
 	return entries, nil
+}
+
+func (rib *RIB) Print(w io.Writer) {
+	for e := range rib.Entries {
+		fmt.Fprintf(w,
+			"- %v (ORIGIN: %v, AS_PATH: %v, NEXTHOP: %v)\n",
+			e.Prefix, e.Origin, e.ASPath.Segments, net.IP(e.NextHop),
+		)
+	}
 }
