@@ -4,7 +4,7 @@ nodes:
     interfaces:
       - { name: net0, type: direct, args: R2#net0 }
       - { name: net1, type: direct, args: C1#net0 }
-      - { name: net2, type: direct, args: C3#net0 }
+      #- { name: net2, type: direct, args: C3#net0 }
   - name: R2
     image: docker.io/slankdev/frr
     interfaces:
@@ -19,10 +19,10 @@ nodes:
     image: docker.io/library/alpine
     interfaces:
       - { name: net0, type: direct, args: R2#net1 }
-  - name: C3
-    image: docker.io/library/alpine
-    interfaces:
-      - { name: net0, type: direct, args: R1#net2 }
+  #- name: C3
+  #  image: docker.io/library/alpine
+  #  interfaces:
+  #    - { name: net0, type: direct, args: R1#net2 }
   - name: C4
     image: docker.io/library/alpine
     interfaces:
@@ -54,10 +54,10 @@ node_configs:
     cmds:
       - cmd: ip addr add 10.2.0.2/24 dev net0
       - cmd: ip route add default via 10.2.0.1 dev net0
-  - name: C3
-    cmds:
-      - cmd: ip addr add 10.3.0.2/24 dev net0
-      - cmd: ip route add default via 10.3.0.1 dev net0
+  #- name: C3
+  #  cmds:
+  #    - cmd: ip addr add 10.3.0.2/24 dev net0
+  #    - cmd: ip route add default via 10.3.0.1 dev net0
   - name: C4
     cmds:
       - cmd: ip addr add 10.4.0.2/24 dev net0
