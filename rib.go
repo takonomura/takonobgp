@@ -64,6 +64,7 @@ func (rib *RIB) find(prefix *net.IPNet) *RIBEntry {
 
 func (rib *RIB) Remove(prefix *net.IPNet) error {
 	rib.mutex.Lock()
+	defer rib.mutex.Unlock()
 
 	e := rib.find(prefix)
 	if e == nil {
@@ -71,8 +72,7 @@ func (rib *RIB) Remove(prefix *net.IPNet) error {
 	}
 	delete(rib.entries, e)
 
-	rib.mutex.Unlock()
-
+	// XXX: ロック取った状態で呼ぶので、こいつらが更に RIB 操作しようとするとデッドロックする
 	for _, onRemove := range rib.onRemoveFuncs {
 		if err := onRemove(e); err != nil {
 			return err
@@ -83,6 +83,7 @@ func (rib *RIB) Remove(prefix *net.IPNet) error {
 
 func (rib *RIB) Update(e *RIBEntry) error {
 	rib.mutex.Lock()
+	defer rib.mutex.Unlock()
 
 	prev := rib.find(e.Prefix)
 	if prev != nil {
@@ -90,8 +91,7 @@ func (rib *RIB) Update(e *RIBEntry) error {
 	}
 	rib.entries[e] = struct{}{}
 
-	rib.mutex.Unlock()
-
+	// XXX: ロック取った状態で呼ぶので、こいつらが更に RIB 操作しようとするとデッドロックする
 	for _, onUpdate := range rib.onUpdateFuncs {
 		if err := onUpdate(prev, e); err != nil {
 			return err

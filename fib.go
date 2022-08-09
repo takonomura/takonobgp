@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"net"
-	"os"
 )
 
 type FIBSyncer struct {
@@ -17,7 +16,6 @@ func (s *FIBSyncer) Register() {
 
 func (s *FIBSyncer) onRemove(e *RIBEntry) error {
 	log.Printf("RIB removed: %v", e)
-	s.RIB.Print(os.Stderr)
 	if e.NextHop == nil {
 		return nil
 	}
@@ -26,7 +24,6 @@ func (s *FIBSyncer) onRemove(e *RIBEntry) error {
 
 func (s *FIBSyncer) onUpdate(prev, curr *RIBEntry) error {
 	log.Printf("RIB updated: %v -> %v", prev, curr)
-	s.RIB.Print(os.Stderr)
 	if prev != nil && prev.NextHop != nil {
 		if err := ipRoute("del", prev.Prefix.String()); err != nil {
 			return err
