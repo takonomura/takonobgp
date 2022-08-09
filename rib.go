@@ -139,6 +139,9 @@ func UpdateMessageToRIBEntries(m UpdateMessage, source *Peer) ([]*RIBEntry, erro
 		nextHop NextHop
 		others  []PathAttribute
 
+		mpReach MPReachNLRI
+		//mpUnreach MPUnreachNLRI
+
 		err error
 	)
 
@@ -150,6 +153,10 @@ func UpdateMessageToRIBEntries(m UpdateMessage, source *Peer) ([]*RIBEntry, erro
 			asPath, err = ASPathFromPathAttribute(a)
 		case AttributeTypeNextHop:
 			nextHop, err = NextHopFromPathAttribute(a)
+		case AttributeTypeMPReachNLRI:
+			mpReach, err = MPReachNLRIFromPathAttribute(a)
+		//case AttributeTypeMPUnreachNLRI:
+		//        mpUnreach, err = MPUnreachNLRIFromPathAttribute(a)
 		default:
 			others = append(others, a)
 		}
@@ -158,16 +165,27 @@ func UpdateMessageToRIBEntries(m UpdateMessage, source *Peer) ([]*RIBEntry, erro
 		}
 	}
 
-	entries := make([]*RIBEntry, len(m.NLRI))
-	for i, r := range m.NLRI {
-		entries[i] = &RIBEntry{
+	entries := make([]*RIBEntry, 0, len(mpReach.NLRI)+len(m.NLRI))
+
+	for _, r := range mpReach.NLRI {
+		entries = append(entries, &RIBEntry{
+			Prefix:          r,
+			Origin:          origin,
+			ASPath:          asPath,
+			NextHop:         NextHop(mpReach.NextHop),
+			OtherAttributes: others,
+			Source:          source,
+		})
+	}
+	for _, r := range m.NLRI {
+		entries = append(entries, &RIBEntry{
 			Prefix:          r,
 			Origin:          origin,
 			ASPath:          asPath,
 			NextHop:         nextHop,
 			OtherAttributes: others, // TODO: Copy other attributes?
 			Source:          source,
-		}
+		})
 	}
 	return entries, nil
 }

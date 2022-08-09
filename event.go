@@ -63,6 +63,13 @@ func (e TcpCRAckedEvent) Do(p *Peer) error {
 			1,    // Capability Code: 1 = Multiprotocol Extensions
 			4,    // Capability Length
 			0, 1, // AFI: 1 = IPv4
+			0,    // Reserved
+			1,    // SAFI: 1 = Unicast
+			2,    // Parameter Type: 2 = Capability
+			6,    // Parameter Length
+			1,    // Capability Code: 1 = Multiprotocol Extensions
+			4,    // Capability Length
+			0, 1, // AFI: 2 = IPv6
 			0, // Reserved
 			1, // SAFI: 1 = Unicast
 		},
@@ -187,6 +194,9 @@ func (e LocalRIBUpdateEvent) Do(p *Peer) error {
 	}
 	// Update
 	for _, e := range e.Updated {
+		if len(e.NextHop) != 4 {
+			continue // TODO: Non IPv4
+		}
 		pathAttributes := []PathAttribute{
 			e.Origin.ToPathAttribute(),
 			ASPath{
