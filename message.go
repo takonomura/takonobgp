@@ -234,15 +234,14 @@ func prefixByteLength(maskLength int) int {
 	return (maskLength + 7) / 8
 }
 
-func readIPNet(r *bytes.Reader) (*net.IPNet, error) {
+func readIPNet(r *bytes.Reader, bits int) (*net.IPNet, error) {
 	var length int
 	if b, err := r.ReadByte(); err != nil {
 		return nil, fmt.Errorf("prefix length: %w", err)
 	} else {
 		length = int(b)
 	}
-	// TODO: Support IPv6?
-	mask := net.CIDRMask(length, 32)
+	mask := net.CIDRMask(length, bits)
 	prefix := make([]byte, 4)
 	if _, err := io.ReadFull(r, prefix[:prefixByteLength(length)]); err != nil {
 		return nil, fmt.Errorf("prefix: %w", err)
@@ -283,7 +282,7 @@ func ParseUpdateMessage(buf []byte) (Message, error) {
 	// r.Len() が残りバイト数なので、これの差分で何バイト読んだかわかる
 	stop := r.Len() - int(binary.BigEndian.Uint16(b[:]))
 	for stop < r.Len() {
-		route, err := readIPNet(r)
+		route, err := readIPNet(r, 32)
 		if err != nil {
 			return nil, fmt.Errorf("withdrawn route: %w", err)
 		}
@@ -305,7 +304,7 @@ func ParseUpdateMessage(buf []byte) (Message, error) {
 
 	// NLRI
 	for r.Len() > 0 {
-		route, err := readIPNet(r)
+		route, err := readIPNet(r, 32)
 		if err != nil {
 			return nil, fmt.Errorf("nlri: %w", err)
 		}
