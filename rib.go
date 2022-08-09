@@ -92,14 +92,10 @@ func (rib *RIB) find(prefix *net.IPNet) *RIBEntry {
 	return nil
 }
 
-func (rib *RIB) Remove(prefix *net.IPNet) error {
+func (rib *RIB) Remove(e *RIBEntry) error {
 	rib.mutex.Lock()
 	defer rib.mutex.Unlock()
 
-	e := rib.find(prefix)
-	if e == nil {
-		return fmt.Errorf("no entry to remove: %v", prefix)
-	}
 	delete(rib.entries, e)
 
 	// XXX: ロック取った状態で呼ぶので、こいつらが更に RIB 操作しようとするとデッドロックする

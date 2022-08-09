@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net"
+	"sync"
 	"time"
 )
 
@@ -18,32 +19,80 @@ const (
 	StateEstablished State = "established"
 )
 
+type PeerConfig struct {
+	MyAS     uint16
+	RouterID [4]byte
+
+	NeighborAddress string
+
+	LocalRIB *RIB
+
+	HoldTime uint16
+}
+
 type Peer struct {
 	MyAS            uint16
-	ID              [4]byte
+	RouterID        [4]byte
 	NeighborAddress string
 
 	LocalRIB *RIB
 
 	HoldTime uint16
 
-	State     State
-	conn      net.Conn
+	State State
+	conn  net.Conn
+	wg    *sync.WaitGroup
+
 	stopChan  chan struct{}
 	eventChan chan Event
 
 	holdTimer      *time.Ticker
 	keepaliveTimer *time.Ticker
+
+	ribOnRemoveID int
+	ribOnUpdateID int
+}
+
+func NewPeer(cfg PeerConfig) *Peer {
+	return &Peer{
+		MyAS:            cfg.MyAS,
+		RouterID:        cfg.RouterID,
+		NeighborAddress: cfg.NeighborAddress,
+		LocalRIB:        cfg.LocalRIB,
+		HoldTime:        cfg.HoldTime,
+		State:           StateIdle,
+		wg:              new(sync.WaitGroup),
+		stopChan:        make(chan struct{}),
+		eventChan:       make(chan Event, 10),
+		ribOnRemoveID:   -1,
+		ribOnUpdateID:   -1,
+	}
 }
 
 func (p *Peer) Run(ctx context.Context) error {
 	defer func() {
+		if p.ribOnRemoveID != -1 {
+			p.LocalRIB.UnregisterOnRemove(p.ribOnRemoveID)
+		}
+		if p.ribOnUpdateID != -1 {
+			p.LocalRIB.UnregisterOnUpdate(p.ribOnUpdateID)
+		}
+
 		if p.conn != nil {
 			p.conn.Close()
 		}
 		close(p.stopChan)
-		// TODO: Wait all related goroutines
+
+		for _, e := range p.LocalRIB.Entries() {
+			if e.Source == p {
+				p.LocalRIB.Remove(e)
+			}
+		}
+
+		p.wg.Wait()
 	}()
+
+	p.eventChan <- ManualStartEvent{}
 	for {
 		select {
 		case e := <-p.eventChan:
@@ -91,28 +140,18 @@ func (p *Peer) receiveMessages() error {
 
 }
 
-func (p *Peer) startHoldTimer() {
+func (p *Peer) startTimers() {
 	p.holdTimer = time.NewTicker(time.Duration(p.HoldTime) * time.Second)
-	go func() {
-		defer p.holdTimer.Stop()
-		for {
-			select {
-			case <-p.holdTimer.C:
-				// TODO: Hold timer exceeded
-			case <-p.stopChan:
-				return
-			}
-		}
-	}()
-}
-
-func (p *Peer) startKeepaliveTimer() {
-	// TODO: Configurable
 	p.keepaliveTimer = time.NewTicker(time.Duration(p.HoldTime/3) * time.Second)
+	p.wg.Add(1)
 	go func() {
+		defer p.wg.Done()
+		defer p.holdTimer.Stop()
 		defer p.keepaliveTimer.Stop()
 		for {
 			select {
+			case <-p.holdTimer.C:
+				p.eventChan <- HoldTimerExpireEvent{}
 			case <-p.keepaliveTimer.C:
 				p.eventChan <- KeepaliveTimerExpireEvent{}
 			case <-p.stopChan:

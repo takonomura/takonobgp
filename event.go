@@ -56,12 +56,17 @@ func (e TcpCRAckedEvent) Do(p *Peer) error {
 		Version:  4,
 		MyAS:     p.MyAS,
 		HoldTime: p.HoldTime,
-		BGPID:    p.ID,
+		BGPID:    p.RouterID,
 	}); err != nil {
 		return fmt.Errorf("send open message: %w", err)
 	}
 	p.setState(StateOpenSent)
-	go p.receiveMessages()
+
+	p.wg.Add(1)
+	go func() {
+		defer p.wg.Done()
+		p.receiveMessages()
+	}()
 	return nil
 }
 
@@ -82,8 +87,11 @@ func (e UpdateMessageEvent) Do(p *Peer) error {
 		return fmt.Errorf("unexpected state: %v", p.State)
 	}
 	for _, r := range e.Message.WirhdrawnRoutes {
-		// TODO: Check the entry is from the peer
-		if err := p.LocalRIB.Remove(r); err != nil {
+		e := p.LocalRIB.Find(r)
+		if e == nil || e.Source != p {
+			continue
+		}
+		if err := p.LocalRIB.Remove(e); err != nil {
 			return err
 		}
 	}
@@ -114,8 +122,7 @@ func (e KeepaliveMessageEvent) Do(p *Peer) error {
 	switch p.State {
 	case StateOpenConfirm:
 		p.setState(StateEstablished)
-		go p.startHoldTimer()
-		go p.startKeepaliveTimer()
+		p.startTimers()
 		p.LocalRIB.OnRemove(p.onLocalRIBRemove)
 		p.LocalRIB.OnUpdate(p.onLocalRIBUpdate)
 
@@ -130,7 +137,7 @@ func (e KeepaliveMessageEvent) Do(p *Peer) error {
 				e.NextHop.ToPathAttribute(),
 			}
 			if e.NextHop == nil {
-				pathAttributes[2] = NextHop(p.ID[:]).ToPathAttribute()
+				pathAttributes[2] = NextHop(p.RouterID[:]).ToPathAttribute()
 			}
 			if err := p.sendMessage(UpdateMessage{
 				PathAttributes: append(pathAttributes, e.OtherAttributes...),
@@ -180,7 +187,7 @@ func (e LocalRIBUpdateEvent) Do(p *Peer) error {
 			e.NextHop.ToPathAttribute(),
 		}
 		if e.NextHop == nil {
-			pathAttributes[2] = NextHop(p.ID[:]).ToPathAttribute()
+			pathAttributes[2] = NextHop(p.RouterID[:]).ToPathAttribute()
 		}
 		if err := p.sendMessage(UpdateMessage{
 			PathAttributes: append(pathAttributes, e.OtherAttributes...),

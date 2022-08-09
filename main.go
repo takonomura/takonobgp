@@ -18,53 +18,43 @@ func getenvOrDefault(name, def string) string {
 }
 
 func main() {
-	myAS, err := strconv.ParseUint(getenvOrDefault("MY_ASN", "65001"), 10, 16)
-	if err != nil {
-		log.Fatalf("parsing MY_ASN: %v", err)
-	}
+	rib := NewRIB()
+	syncer := FIBSyncer{RIB: rib}
+	syncer.Register()
+	defer syncer.Cleanup() // XXX: Unreachable
 
-	routerID := net.ParseIP(getenvOrDefault("ROUTER_ID", "10.0.0.1")).To4()
-	if routerID == nil || len(routerID) != 4 {
-		log.Fatalf("invalid ROUTER_ID")
-	}
-	var id [4]byte
-	copy(id[:], routerID)
+	_, route, _ := net.ParseCIDR("10.1.0.0/24") // TODO: Configurable
+	rib.Update(&RIBEntry{
+		Prefix:  route,
+		Origin:  OriginAttributeIGP,
+		ASPath:  ASPath{Sequence: true, Segments: []uint16{}},
+		NextHop: nil,
+	})
 
 	for {
-		p := &Peer{
-			MyAS:            uint16(myAS),
-			ID:              id,
-			NeighborAddress: getenvOrDefault("NEIGHBOR_ADDR", "10.0.0.2"),
-
-			LocalRIB: NewRIB(),
-
-			HoldTime: 180,
-			State:    StateIdle,
-
-			eventChan: make(chan Event, 10),
-			stopChan:  make(chan struct{}),
+		myAS, err := strconv.ParseUint(getenvOrDefault("MY_ASN", "65001"), 10, 16)
+		if err != nil {
+			log.Fatalf("parsing MY_ASN: %v", err)
 		}
 
-		_, route, _ := net.ParseCIDR("10.1.0.0/24") // TODO: Configurable
-		p.LocalRIB.Update(&RIBEntry{
-			Prefix:  route,
-			Origin:  OriginAttributeIGP,
-			ASPath:  ASPath{Sequence: true, Segments: []uint16{}},
-			NextHop: nil,
+		routerID := net.ParseIP(getenvOrDefault("ROUTER_ID", "10.0.0.1")).To4()
+		if routerID == nil || len(routerID) != 4 {
+			log.Fatalf("invalid ROUTER_ID")
+		}
+		var id [4]byte
+		copy(id[:], routerID)
+
+		p := NewPeer(PeerConfig{
+			MyAS:            uint16(myAS),
+			RouterID:        id,
+			NeighborAddress: getenvOrDefault("NEIGHBOR_ADDR", "10.0.0.2"),
+			LocalRIB:        rib,
+			HoldTime:        180,
 		})
 
-		log.Printf("current RIB:")
-		p.LocalRIB.Print(os.Stderr)
-
-		syncer := FIBSyncer{RIB: p.LocalRIB}
-		syncer.Register()
-
-		p.eventChan <- ManualStartEvent{}
 		if err := p.Run(context.TODO()); err != nil {
 			log.Printf("error: %v", err)
 		}
-
-		syncer.Cleanup()
 
 		time.Sleep(time.Second)
 	}
