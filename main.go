@@ -31,6 +31,9 @@ func main() {
 		NextHop: nil,
 	})
 
+	httpServer := &HTTPServer{RIB: rib}
+	go httpServer.ListenAndServe("127.0.0.1:8080")
+
 	for {
 		myAS, err := strconv.ParseUint(getenvOrDefault("MY_ASN", "65001"), 10, 16)
 		if err != nil {
