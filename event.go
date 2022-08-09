@@ -57,6 +57,15 @@ func (e TcpCRAckedEvent) Do(p *Peer) error {
 		MyAS:     p.MyAS,
 		HoldTime: p.HoldTime,
 		BGPID:    p.RouterID,
+		OptionalParameters: []byte{ // TODO: もっといい感じに...
+			2,    // Parameter Type: 2 = Capability
+			6,    // Parameter Length
+			1,    // Capability Code: 1 = Multiprotocol Extensions
+			4,    // Capability Length
+			0, 1, // AFI: 1 = IPv4
+			0, // Reserved
+			1, // SAFI: 1 = Unicast
+		},
 	}); err != nil {
 		return fmt.Errorf("send open message: %w", err)
 	}
