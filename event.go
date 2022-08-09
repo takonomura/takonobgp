@@ -69,7 +69,7 @@ func (e TcpCRAckedEvent) Do(p *Peer) error {
 			6,    // Parameter Length
 			1,    // Capability Code: 1 = Multiprotocol Extensions
 			4,    // Capability Length
-			0, 1, // AFI: 2 = IPv6
+			0, 2, // AFI: 2 = IPv6
 			0, // Reserved
 			1, // SAFI: 1 = Unicast
 		},
