@@ -16,6 +16,9 @@ func (s *FIBSyncer) Register() {
 
 func (s *FIBSyncer) onRemove(e *RIBEntry) error {
 	log.Printf("RIB removed: %v", e)
+	if len(e.Prefix.IP) != 4 { // TODO: Non IPv4
+		return nil
+	}
 	if e.NextHop == nil {
 		return nil
 	}
@@ -24,6 +27,9 @@ func (s *FIBSyncer) onRemove(e *RIBEntry) error {
 
 func (s *FIBSyncer) onUpdate(prev, curr *RIBEntry) error {
 	log.Printf("RIB updated: %v -> %v", prev, curr)
+	if len(curr.Prefix.IP) != 4 { // TODO: Non IPv4
+		return nil
+	}
 	if prev != nil && prev.NextHop != nil {
 		if err := ipRoute("del", prev.Prefix.String()); err != nil {
 			return err
