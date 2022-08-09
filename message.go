@@ -242,7 +242,7 @@ func readIPNet(r *bytes.Reader, bits int) (*net.IPNet, error) {
 		length = int(b)
 	}
 	mask := net.CIDRMask(length, bits)
-	prefix := make([]byte, 4)
+	prefix := make([]byte, bits/8)
 	if _, err := io.ReadFull(r, prefix[:prefixByteLength(length)]); err != nil {
 		return nil, fmt.Errorf("prefix: %w", err)
 	}
