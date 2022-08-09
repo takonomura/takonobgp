@@ -8,7 +8,7 @@ import (
 )
 
 type Config struct {
-	Networks []net.IPNet
+	Networks []*net.IPNet
 	Peer     PeerConfig
 }
 
@@ -25,7 +25,7 @@ func LoadConfig(r io.Reader) (Config, error) {
 		return Config{}, err
 	}
 	cfg := Config{
-		Networks: make([]net.IPNet, len(aux.Networks)),
+		Networks: make([]*net.IPNet, len(aux.Networks)),
 		Peer: PeerConfig{
 			MyAS:            aux.Peer.MyAS,
 			NeighborAddress: aux.Peer.Neighbor,
@@ -37,7 +37,7 @@ func LoadConfig(r io.Reader) (Config, error) {
 		if err != nil {
 			return Config{}, fmt.Errorf("network cidr: %w", err)
 		}
-		cfg.Networks[i] = *r
+		cfg.Networks[i] = r
 	}
 
 	id := net.ParseIP(aux.Peer.RouterID).To4()

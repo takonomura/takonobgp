@@ -9,7 +9,7 @@ import (
 )
 
 type RIBEntry struct {
-	Prefix  net.IPNet
+	Prefix  *net.IPNet
 	Origin  Origin
 	ASPath  ASPath
 	NextHop net.IP
@@ -77,13 +77,13 @@ func (rib *RIB) UnregisterOnUpdate(id int) {
 	rib.onUpdateFuncs[id] = nil
 }
 
-func (rib *RIB) Find(prefix net.IPNet) *RIBEntry {
+func (rib *RIB) Find(prefix *net.IPNet) *RIBEntry {
 	rib.mutex.RLock()
 	defer rib.mutex.RUnlock()
 	return rib.find(prefix)
 }
 
-func (rib *RIB) find(prefix net.IPNet) *RIBEntry {
+func (rib *RIB) find(prefix *net.IPNet) *RIBEntry {
 	for e := range rib.entries {
 		if e.Prefix.IP.Equal(prefix.IP) && bytes.Equal([]byte(prefix.Mask), []byte(e.Prefix.Mask)) {
 			return e

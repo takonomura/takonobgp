@@ -30,7 +30,7 @@ type (
 	KeepaliveTimerExpireEvent struct{}
 
 	LocalRIBUpdateEvent struct {
-		Removed []net.IPNet
+		Removed []*net.IPNet
 		Updated []*RIBEntry
 	}
 )
@@ -157,7 +157,7 @@ func (e KeepaliveMessageEvent) Do(p *Peer) error {
 			}
 			if err := p.sendMessage(UpdateMessage{
 				PathAttributes: append(pathAttributes, e.OtherAttributes...),
-				NLRI:           []net.IPNet{e.Prefix},
+				NLRI:           []*net.IPNet{e.Prefix},
 			}); err != nil {
 				return fmt.Errorf("send update message: %w", err)
 			}
@@ -210,7 +210,7 @@ func (e LocalRIBUpdateEvent) Do(p *Peer) error {
 		}
 		if err := p.sendMessage(UpdateMessage{
 			PathAttributes: append(pathAttributes, e.OtherAttributes...),
-			NLRI:           []net.IPNet{e.Prefix},
+			NLRI:           []*net.IPNet{e.Prefix},
 		}); err != nil {
 			return fmt.Errorf("send update message: %w", err)
 		}

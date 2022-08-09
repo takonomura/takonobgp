@@ -67,14 +67,14 @@ func (s *HTTPServer) handleNetworkAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	e := s.RIB.Find(*prefix)
+	e := s.RIB.Find(prefix)
 	if e != nil {
 		http.Error(w, "network already exists in RIB", http.StatusBadRequest)
 		return
 	}
 
 	if err := s.RIB.Update(&RIBEntry{
-		Prefix:  *prefix,
+		Prefix:  prefix,
 		Origin:  OriginAttributeIGP,
 		ASPath:  ASPath{Sequence: true, Segments: []uint16{}},
 		NextHop: nil,
@@ -104,7 +104,7 @@ func (s *HTTPServer) handleNetworkDelete(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	e := s.RIB.Find(*prefix)
+	e := s.RIB.Find(prefix)
 	if e == nil {
 		http.Error(w, "not found in RIB", http.StatusNotFound)
 		return

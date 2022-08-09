@@ -36,7 +36,7 @@ type MPReachNLRI struct {
 	AFI     AFI
 	SAFI    SAFI
 	NextHop []net.IP
-	NLRI    []net.IPNet
+	NLRI    []*net.IPNet
 }
 
 func MPReachNLRIFromPathAttribute(a PathAttribute) (MPReachNLRI, error) {
@@ -94,7 +94,7 @@ func (a MPReachNLRI) ToPathAttribute() PathAttribute {
 type MPUnreachNLRI struct {
 	AFI             AFI
 	SAFI            SAFI
-	WithdrawnRoutes []net.IPNet
+	WithdrawnRoutes []*net.IPNet
 }
 
 func MPUnreachNLRIFromPathAttribute(a PathAttribute) (MPUnreachNLRI, error) {

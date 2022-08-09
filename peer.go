@@ -163,7 +163,7 @@ func (p *Peer) startTimers() {
 
 func (p *Peer) onLocalRIBRemove(e *RIBEntry) error {
 	p.eventChan <- LocalRIBUpdateEvent{
-		Removed: []net.IPNet{e.Prefix},
+		Removed: []*net.IPNet{e.Prefix},
 	}
 	return nil
 }
