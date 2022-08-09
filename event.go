@@ -102,7 +102,11 @@ func (e UpdateMessageEvent) Do(p *Peer) error {
 	if p.State != StateEstablished {
 		return fmt.Errorf("unexpected state: %v", p.State)
 	}
-	for _, r := range e.Message.WirhdrawnRoutes {
+	ws, es, err := UpdateMessageToRIBEntries(e.Message, p)
+	if err != nil {
+		return err
+	}
+	for _, r := range ws {
 		e := p.LocalRIB.Find(r)
 		if e == nil || e.Source != p {
 			continue
@@ -110,10 +114,6 @@ func (e UpdateMessageEvent) Do(p *Peer) error {
 		if err := p.LocalRIB.Remove(e); err != nil {
 			return err
 		}
-	}
-	es, err := UpdateMessageToRIBEntries(e.Message, p)
-	if err != nil {
-		return err
 	}
 	for _, e := range es {
 		curr := p.LocalRIB.Find(e.Prefix)

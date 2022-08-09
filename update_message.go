@@ -2,15 +2,15 @@ package main
 
 import "net"
 
-func UpdateMessageToRIBEntries(m UpdateMessage, source *Peer) ([]*RIBEntry, error) {
+func UpdateMessageToRIBEntries(m UpdateMessage, source *Peer) ([]*net.IPNet, []*RIBEntry, error) {
 	var (
 		origin  Origin
 		asPath  ASPath
 		nextHop NextHop
 		others  []PathAttribute
 
-		mpReach MPReachNLRI
-		//mpUnreach MPUnreachNLRI
+		mpReach   MPReachNLRI
+		mpUnreach MPUnreachNLRI
 
 		err error
 	)
@@ -25,24 +25,31 @@ func UpdateMessageToRIBEntries(m UpdateMessage, source *Peer) ([]*RIBEntry, erro
 			nextHop, err = NextHopFromPathAttribute(a)
 		case AttributeTypeMPReachNLRI:
 			mpReach, err = MPReachNLRIFromPathAttribute(a)
-		//case AttributeTypeMPUnreachNLRI:
-		//        mpUnreach, err = MPUnreachNLRIFromPathAttribute(a)
+		case AttributeTypeMPUnreachNLRI:
+			mpUnreach, err = MPUnreachNLRIFromPathAttribute(a)
 		default:
 			others = append(others, a)
 		}
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
-	entries := make([]*RIBEntry, 0, len(mpReach.NLRI)+len(m.NLRI))
+	withdrawns := make([]*net.IPNet, 0, len(m.WirhdrawnRoutes)+len(mpUnreach.WithdrawnRoutes))
+	for _, r := range m.WirhdrawnRoutes {
+		withdrawns = append(withdrawns, r)
+	}
+	for _, r := range mpUnreach.WithdrawnRoutes {
+		withdrawns = append(withdrawns, r)
+	}
 
+	entries := make([]*RIBEntry, 0, len(mpReach.NLRI)+len(m.NLRI))
 	for _, r := range mpReach.NLRI {
 		entries = append(entries, &RIBEntry{
 			Prefix:          r,
 			Origin:          origin,
 			ASPath:          asPath,
-			NextHop:         mpReach.NextHop[0],
+			NextHop:         mpReach.NextHop[0], // TODO: Select best
 			OtherAttributes: others,
 			Source:          source,
 		})
@@ -57,5 +64,6 @@ func UpdateMessageToRIBEntries(m UpdateMessage, source *Peer) ([]*RIBEntry, erro
 			Source:          source,
 		})
 	}
-	return entries, nil
+
+	return withdrawns, entries, nil
 }
