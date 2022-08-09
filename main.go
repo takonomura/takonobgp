@@ -54,6 +54,10 @@ func main() {
 			ASPath:  ASPath{Sequence: true, Segments: []uint16{}},
 			NextHop: nil,
 		})
+
+		log.Printf("current RIB:")
+		p.LocalRIB.Print(os.Stderr)
+
 		p.LocalRIB.OnRemoveFuncs = append(p.LocalRIB.OnRemoveFuncs, func(e *RIBEntry) error {
 			log.Printf("RIB removed: %v", e)
 			p.LocalRIB.Print(os.Stderr)
