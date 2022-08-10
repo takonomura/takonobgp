@@ -31,7 +31,7 @@ func main() {
 		IPv6Unicast: NewRIB(),
 	}
 	for _, rib := range ribs {
-		syncer := FIBSyncer{RIB: rib}
+		syncer := FIBSyncer{RIB: rib, managed: make(map[string]struct{})}
 		syncer.Register()
 		defer syncer.Cleanup() // XXX: Unreachable
 	}
