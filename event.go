@@ -144,21 +144,7 @@ func (e KeepaliveMessageEvent) Do(p *Peer) error {
 
 		log.Printf("sending initial update messages")
 		for _, e := range p.LocalRIB.Entries() {
-			pathAttributes := []PathAttribute{
-				e.Origin.ToPathAttribute(),
-				ASPath{
-					Sequence: e.ASPath.Sequence,
-					Segments: append([]uint16{p.MyAS}, e.ASPath.Segments...),
-				}.ToPathAttribute(),
-				NextHop(e.NextHop).ToPathAttribute(),
-			}
-			if e.NextHop == nil {
-				pathAttributes[2] = NextHop(p.RouterID[:]).ToPathAttribute()
-			}
-			if err := p.sendMessage(UpdateMessage{
-				PathAttributes: append(pathAttributes, e.OtherAttributes...),
-				NLRI:           []*net.IPNet{e.Prefix},
-			}); err != nil {
+			if err := p.sendMessage(CreateUpdateMessage(e, p.MyAS, net.IP(p.RouterID[:]))); err != nil {
 				return fmt.Errorf("send update message: %w", err)
 			}
 		}
@@ -187,36 +173,14 @@ func (e LocalRIBUpdateEvent) Do(p *Peer) error {
 	// Withdrawn
 	if len(e.Removed) > 0 {
 		for _, r := range e.Removed {
-			if len(r.IP) != 4 {
-				continue // TODO: Non IPv4
-			}
-			if err := p.sendMessage(UpdateMessage{
-				WirhdrawnRoutes: []*net.IPNet{r},
-			}); err != nil {
+			if err := p.sendMessage(CreateWithdrawnMessage(r)); err != nil {
 				return fmt.Errorf("send withdrawn update message: %w", err)
 			}
 		}
 	}
 	// Update
 	for _, e := range e.Updated {
-		if len(e.NextHop) != 4 {
-			continue // TODO: Non IPv4
-		}
-		pathAttributes := []PathAttribute{
-			e.Origin.ToPathAttribute(),
-			ASPath{
-				Sequence: e.ASPath.Sequence,
-				Segments: append([]uint16{p.MyAS}, e.ASPath.Segments...),
-			}.ToPathAttribute(),
-			NextHop(e.NextHop).ToPathAttribute(),
-		}
-		if e.NextHop == nil {
-			pathAttributes[2] = NextHop(p.RouterID[:]).ToPathAttribute()
-		}
-		if err := p.sendMessage(UpdateMessage{
-			PathAttributes: append(pathAttributes, e.OtherAttributes...),
-			NLRI:           []*net.IPNet{e.Prefix},
-		}); err != nil {
+		if err := p.sendMessage(CreateUpdateMessage(e, p.MyAS, net.IP(p.RouterID[:]))); err != nil {
 			return fmt.Errorf("send update message: %w", err)
 		}
 	}

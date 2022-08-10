@@ -1,6 +1,9 @@
 package main
 
-import "net"
+import (
+	"fmt"
+	"net"
+)
 
 func UpdateMessageToRIBEntries(m UpdateMessage, source *Peer) ([]*net.IPNet, []*RIBEntry, error) {
 	var (
@@ -66,4 +69,66 @@ func UpdateMessageToRIBEntries(m UpdateMessage, source *Peer) ([]*net.IPNet, []*
 	}
 
 	return withdrawns, entries, nil
+}
+
+func CreateWithdrawnMessage(r *net.IPNet) UpdateMessage {
+	switch len(r.IP) {
+	case 4: // IPv4
+		return UpdateMessage{
+			WirhdrawnRoutes: []*net.IPNet{r},
+		}
+	case 16: // IPv6
+		return UpdateMessage{
+			PathAttributes: []PathAttribute{
+				MPUnreachNLRI{
+					AFI:             AFIIPv6,
+					SAFI:            SAFIUnicast,
+					WithdrawnRoutes: []*net.IPNet{r},
+				}.ToPathAttribute(),
+			},
+		}
+	default:
+		panic(fmt.Errorf("unexpected withdrawn prefix: %v", r))
+	}
+}
+
+func CreateUpdateMessage(e *RIBEntry, prependAS uint16, selfNextHop net.IP) UpdateMessage {
+	nextHop := e.NextHop
+	if nextHop == nil {
+		nextHop = selfNextHop
+	}
+	switch len(e.NextHop) {
+	case 4:
+		pathAttributes := []PathAttribute{
+			e.Origin.ToPathAttribute(),
+			ASPath{
+				Sequence: e.ASPath.Sequence,
+				Segments: append([]uint16{prependAS}, e.ASPath.Segments...),
+			}.ToPathAttribute(),
+			NextHop(nextHop).ToPathAttribute(),
+		}
+		return UpdateMessage{
+			PathAttributes: append(pathAttributes, e.OtherAttributes...),
+			NLRI:           []*net.IPNet{e.Prefix},
+		}
+	case 16:
+		pathAttributes := []PathAttribute{
+			e.Origin.ToPathAttribute(),
+			ASPath{
+				Sequence: e.ASPath.Sequence,
+				Segments: append([]uint16{prependAS}, e.ASPath.Segments...),
+			}.ToPathAttribute(),
+			MPReachNLRI{
+				AFI:     AFIIPv6,
+				SAFI:    SAFIUnicast,
+				NextHop: []net.IP{nextHop},
+				NLRI:    []*net.IPNet{e.Prefix},
+			}.ToPathAttribute(),
+		}
+		return UpdateMessage{
+			PathAttributes: append(pathAttributes, e.OtherAttributes...),
+		}
+	default:
+		panic(fmt.Errorf("unexpected rib entry: %v", e))
+	}
 }
