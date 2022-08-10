@@ -58,6 +58,9 @@ func LoadConfig(r io.Reader, ribs map[AddressFamily]*RIB) (Config, error) {
 		}
 
 		nextHop := net.ParseIP(v.NextHop)
+		if af.NextHopSize() == 4 {
+			nextHop = nextHop.To4()
+		}
 		if nextHop == nil {
 			return Config{}, fmt.Errorf("invalid next hop: %q", v.NextHop)
 		}
