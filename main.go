@@ -60,8 +60,14 @@ func main() {
 		})
 	}
 
-	go (&HTTPServer{RIB: ribs[IPv4Unicast]}).ListenAndServe("127.0.0.1:8080")
-	go (&HTTPServer{RIB: ribs[IPv6Unicast]}).ListenAndServe("127.0.0.1:8686")
+	go (&HTTPServer{
+		AF:  IPv4Unicast,
+		RIB: ribs[IPv4Unicast],
+	}).ListenAndServe("127.0.0.1:8080")
+	go (&HTTPServer{
+		AF:  IPv6Unicast,
+		RIB: ribs[IPv6Unicast],
+	}).ListenAndServe("127.0.0.1:8686")
 
 	for {
 		p := NewPeer(cfg.Peer)

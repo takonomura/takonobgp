@@ -8,6 +8,7 @@ import (
 )
 
 type HTTPServer struct {
+	AF  AddressFamily
 	RIB *RIB
 }
 
@@ -74,6 +75,7 @@ func (s *HTTPServer) handleNetworkAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.RIB.Update(&RIBEntry{
+		AF:      s.AF,
 		Prefix:  prefix,
 		Origin:  OriginAttributeIGP,
 		ASPath:  ASPath{Sequence: true, Segments: []uint16{}},
