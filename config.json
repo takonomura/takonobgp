@@ -3,6 +3,14 @@
   "peer": {
     "as": 65001,
     "router_id": "10.0.0.1",
-    "neighbor": "10.0.0.2"
+    "neighbor": "10.0.0.2",
+    "address_families": {
+      "ipv4-unicast": {
+        "next_hop": "10.0.0.1"
+      },
+      "ipv6-unicast": {
+        "next_hop": "2001:db8::1"
+      }
+    }
   }
 }

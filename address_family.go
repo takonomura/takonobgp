@@ -1,6 +1,8 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type (
 	AFI  uint16
@@ -42,4 +44,26 @@ func (f AddressFamily) AddressBits() int {
 
 func (f AddressFamily) NextHopSize() int {
 	return f.AddressBits() / 8
+}
+
+func (f AddressFamily) String() string {
+	switch f {
+	case IPv4Unicast:
+		return "ipv4-unicast"
+	case IPv6Unicast:
+		return "ipv6-unicast"
+	default:
+		return fmt.Sprint("address-family-%d-%d", f.AFI, f.SAFI)
+	}
+}
+
+func AddressFamilyFromString(name string) (AddressFamily, bool) {
+	switch name {
+	case "ipv4-unicast":
+		return IPv4Unicast, true
+	case "ipv6-unicast":
+		return IPv6Unicast, true
+	default:
+		return AddressFamily{}, false
+	}
 }

@@ -107,23 +107,25 @@ func (e UpdateMessageEvent) Do(p *Peer) error {
 		return err
 	}
 	for _, r := range ws {
-		e := p.LocalRIB.Find(r)
+		rib := p.AddressFamilies[r.AF].LocalRIB
+		e := rib.Find(r.Prefix)
 		if e == nil || e.Source != p {
 			continue
 		}
-		if err := p.LocalRIB.Remove(e); err != nil {
+		if err := rib.Remove(e); err != nil {
 			return err
 		}
 	}
 	for _, e := range es {
-		curr := p.LocalRIB.Find(e.Prefix)
+		rib := p.AddressFamilies[e.AF].LocalRIB
+		curr := rib.Find(e.Prefix)
 		if curr != nil {
 			if len(curr.ASPath.Segments) < len(e.ASPath.Segments) {
 				log.Printf("ignore update for %v (entry in RIB has priority)", e.Prefix)
 				continue
 			}
 		}
-		if err := p.LocalRIB.Update(e); err != nil {
+		if err := rib.Update(e); err != nil {
 			return err
 		}
 	}
@@ -139,13 +141,17 @@ func (e KeepaliveMessageEvent) Do(p *Peer) error {
 	case StateOpenConfirm:
 		p.setState(StateEstablished)
 		p.startTimers()
-		p.LocalRIB.OnRemove(p.onLocalRIBRemove)
-		p.LocalRIB.OnUpdate(p.onLocalRIBUpdate)
+		p.registerLocalRIBHandlers()
 
 		log.Printf("sending initial update messages")
-		for _, e := range p.LocalRIB.Entries() {
-			if err := p.sendMessage(CreateUpdateMessage(e, p.MyAS, net.IP(p.RouterID[:]))); err != nil {
-				return fmt.Errorf("send update message: %w", err)
+		for af, f := range p.AddressFamilies {
+			for _, e := range f.LocalRIB.Entries() {
+				if e.AF != af {
+					continue // 違う AF が RIB に混ざってても広報しない (共有 RIB になった時対策)
+				}
+				if err := p.sendMessage(CreateUpdateMessage(e, p.MyAS, net.IP(p.RouterID[:]))); err != nil {
+					return fmt.Errorf("send update message: %w", err)
+				}
 			}
 		}
 		return nil
@@ -180,7 +186,7 @@ func (e LocalRIBUpdateEvent) Do(p *Peer) error {
 	}
 	// Update
 	for _, e := range e.Updated {
-		if err := p.sendMessage(CreateUpdateMessage(e, p.MyAS, net.IP(p.RouterID[:]))); err != nil {
+		if err := p.sendMessage(CreateUpdateMessage(e, p.MyAS, p.AddressFamilies[e.AF].SelfNextHop)); err != nil {
 			return fmt.Errorf("send update message: %w", err)
 		}
 	}

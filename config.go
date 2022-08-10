@@ -12,13 +12,17 @@ type Config struct {
 	Peer     PeerConfig
 }
 
-func LoadConfig(r io.Reader) (Config, error) {
+func LoadConfig(r io.Reader, ribs map[AddressFamily]*RIB) (Config, error) {
 	var aux struct {
 		Networks []string `json:"networks"`
 		Peer     struct {
 			MyAS     uint16 `json:"as"`
 			RouterID string `json:"router_id"`
 			Neighbor string `json:"neighbor"`
+
+			AddressFamilies map[string]struct {
+				NextHop string `json:"next_hop"`
+			} `json:"address_families"`
 		} `json:"peer"`
 	}
 	if err := json.NewDecoder(r).Decode(&aux); err != nil {
@@ -45,6 +49,27 @@ func LoadConfig(r io.Reader) (Config, error) {
 		return Config{}, fmt.Errorf("invalid router id: %q", aux.Peer.RouterID)
 	}
 	copy(cfg.Peer.RouterID[:], id)
+
+	cfg.Peer.AddressFamilies = make(map[AddressFamily]AddressFamilyConfig, len(aux.Peer.AddressFamilies))
+	for name, v := range aux.Peer.AddressFamilies {
+		af, ok := AddressFamilyFromString(name)
+		if !ok {
+			return Config{}, fmt.Errorf("invalid address family name: %q", name)
+		}
+
+		nextHop := net.ParseIP(v.NextHop)
+		if nextHop == nil {
+			return Config{}, fmt.Errorf("invalid next hop: %q", v.NextHop)
+		}
+		if len(nextHop) != af.NextHopSize() {
+			return Config{}, fmt.Errorf("invalid next hop length: %q (%d)", nextHop, len(nextHop))
+		}
+
+		cfg.Peer.AddressFamilies[af] = AddressFamilyConfig{
+			SelfNextHop: nextHop,
+			LocalRIB:    ribs[af],
+		}
+	}
 
 	return cfg, nil
 }

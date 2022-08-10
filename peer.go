@@ -25,9 +25,14 @@ type PeerConfig struct {
 
 	NeighborAddress string
 
-	LocalRIB *RIB
+	AddressFamilies map[AddressFamily]AddressFamilyConfig
 
 	HoldTime uint16
+}
+
+type AddressFamilyConfig struct {
+	SelfNextHop net.IP
+	LocalRIB    *RIB
 }
 
 type Peer struct {
@@ -35,7 +40,7 @@ type Peer struct {
 	RouterID        [4]byte
 	NeighborAddress string
 
-	LocalRIB *RIB
+	AddressFamilies map[AddressFamily]AddressFamilyConfig
 
 	HoldTime uint16
 
@@ -49,8 +54,8 @@ type Peer struct {
 	holdTimer      *time.Ticker
 	keepaliveTimer *time.Ticker
 
-	ribOnRemoveID int
-	ribOnUpdateID int
+	ribOnRemoveID map[*RIB]int
+	ribOnUpdateID map[*RIB]int
 }
 
 func NewPeer(cfg PeerConfig) *Peer {
@@ -58,24 +63,24 @@ func NewPeer(cfg PeerConfig) *Peer {
 		MyAS:            cfg.MyAS,
 		RouterID:        cfg.RouterID,
 		NeighborAddress: cfg.NeighborAddress,
-		LocalRIB:        cfg.LocalRIB,
+		AddressFamilies: cfg.AddressFamilies,
 		HoldTime:        cfg.HoldTime,
 		State:           StateIdle,
 		wg:              new(sync.WaitGroup),
 		stopChan:        make(chan struct{}),
 		eventChan:       make(chan Event, 10),
-		ribOnRemoveID:   -1,
-		ribOnUpdateID:   -1,
+		ribOnRemoveID:   make(map[*RIB]int),
+		ribOnUpdateID:   make(map[*RIB]int),
 	}
 }
 
 func (p *Peer) Run(ctx context.Context) error {
 	defer func() {
-		if p.ribOnRemoveID != -1 {
-			p.LocalRIB.UnregisterOnRemove(p.ribOnRemoveID)
+		for rib, id := range p.ribOnRemoveID {
+			rib.UnregisterOnRemove(id)
 		}
-		if p.ribOnUpdateID != -1 {
-			p.LocalRIB.UnregisterOnUpdate(p.ribOnUpdateID)
+		for rib, id := range p.ribOnUpdateID {
+			rib.UnregisterOnUpdate(id)
 		}
 
 		if p.conn != nil {
@@ -83,9 +88,11 @@ func (p *Peer) Run(ctx context.Context) error {
 		}
 		close(p.stopChan)
 
-		for _, e := range p.LocalRIB.Entries() {
-			if e.Source == p {
-				p.LocalRIB.Remove(e)
+		for _, f := range p.AddressFamilies {
+			for _, e := range f.LocalRIB.Entries() {
+				if e.Source == p {
+					f.LocalRIB.Remove(e)
+				}
 			}
 		}
 
@@ -160,6 +167,18 @@ func (p *Peer) startTimers() {
 			}
 		}
 	}()
+}
+
+func (p *Peer) registerLocalRIBHandlers() {
+	for _, f := range p.AddressFamilies {
+		rib := f.LocalRIB
+		if _, ok := p.ribOnRemoveID[rib]; !ok {
+			p.ribOnRemoveID[rib] = rib.OnRemove(p.onLocalRIBRemove)
+		}
+		if _, ok := p.ribOnUpdateID[rib]; !ok {
+			p.ribOnUpdateID[rib] = rib.OnUpdate(p.onLocalRIBUpdate)
+		}
+	}
 }
 
 func (p *Peer) onLocalRIBRemove(e *RIBEntry) error {

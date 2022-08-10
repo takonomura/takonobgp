@@ -5,7 +5,12 @@ import (
 	"net"
 )
 
-func UpdateMessageToRIBEntries(m UpdateMessage, source *Peer) ([]*net.IPNet, []*RIBEntry, error) {
+type WithdrawnRoute struct {
+	AF     AddressFamily
+	Prefix *net.IPNet
+}
+
+func UpdateMessageToRIBEntries(m UpdateMessage, source *Peer) ([]WithdrawnRoute, []*RIBEntry, error) {
 	var (
 		origin  Origin
 		asPath  ASPath
@@ -38,17 +43,24 @@ func UpdateMessageToRIBEntries(m UpdateMessage, source *Peer) ([]*net.IPNet, []*
 		}
 	}
 
-	withdrawns := make([]*net.IPNet, 0, len(m.WirhdrawnRoutes)+len(mpUnreach.WithdrawnRoutes))
+	withdrawns := make([]WithdrawnRoute, 0, len(m.WirhdrawnRoutes)+len(mpUnreach.WithdrawnRoutes))
 	for _, r := range m.WirhdrawnRoutes {
-		withdrawns = append(withdrawns, r)
+		withdrawns = append(withdrawns, WithdrawnRoute{
+			AF:     IPv4Unicast,
+			Prefix: r,
+		})
 	}
 	for _, r := range mpUnreach.WithdrawnRoutes {
-		withdrawns = append(withdrawns, r)
+		withdrawns = append(withdrawns, WithdrawnRoute{
+			AF:     mpUnreach.AF,
+			Prefix: r,
+		})
 	}
 
 	entries := make([]*RIBEntry, 0, len(mpReach.NLRI)+len(m.NLRI))
 	for _, r := range mpReach.NLRI {
 		entries = append(entries, &RIBEntry{
+			AF:              mpReach.AF,
 			Prefix:          r,
 			Origin:          origin,
 			ASPath:          asPath,
@@ -59,6 +71,7 @@ func UpdateMessageToRIBEntries(m UpdateMessage, source *Peer) ([]*net.IPNet, []*
 	}
 	for _, r := range m.NLRI {
 		entries = append(entries, &RIBEntry{
+			AF:              IPv4Unicast,
 			Prefix:          r,
 			Origin:          origin,
 			ASPath:          asPath,

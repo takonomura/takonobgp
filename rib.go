@@ -9,6 +9,7 @@ import (
 )
 
 type RIBEntry struct {
+	AF      AddressFamily
 	Prefix  *net.IPNet
 	Origin  Origin
 	ASPath  ASPath
