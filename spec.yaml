@@ -59,13 +59,13 @@ node_configs:
       - cmd: ip addr add 2001:db8:3::1/64 dev net2
   - name: R2
     cmds:
-      - cmd: /usr/lib/frr/frr start
       - cmd: ip addr add 10.0.0.2/24 dev net0
       - cmd: ip addr add 10.2.0.1/24 dev net1
       - cmd: ip addr add 10.4.0.1/24 dev net2
       - cmd: ip addr add 2001:db8:0::2/64 dev net0
       - cmd: ip addr add 2001:db8:2::1/64 dev net1
       - cmd: ip addr add 2001:db8:4::1/64 dev net2
+      - cmd: /usr/lib/frr/frr start
       - cmd: >-
           vtysh -c "conf t"
           -c "router bgp 65002"
