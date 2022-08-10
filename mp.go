@@ -59,10 +59,10 @@ func (a MPReachNLRI) ToPathAttribute() PathAttribute {
 	for _, a := range a.NextHop {
 		buf.Write([]byte(a))
 	}
+	buf.Write([]byte{0}) // Reserved
 	for _, r := range a.NLRI {
 		writeIPNet(buf, r)
 	}
-	buf.Write([]byte{0}) // Reserved
 
 	return PathAttribute{
 		Flags:    0b10000000, // optional non-transitive
