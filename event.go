@@ -149,7 +149,7 @@ func (e KeepaliveMessageEvent) Do(p *Peer) error {
 				if e.AF != af {
 					continue // 違う AF が RIB に混ざってても広報しない (共有 RIB になった時対策)
 				}
-				if err := p.sendMessage(CreateUpdateMessage(e, p.MyAS, net.IP(p.RouterID[:]))); err != nil {
+				if err := p.sendMessage(CreateUpdateMessage(e, p.MyAS, p.AddressFamilies[e.AF].SelfNextHop)); err != nil {
 					return fmt.Errorf("send update message: %w", err)
 				}
 			}
