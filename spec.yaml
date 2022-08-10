@@ -5,6 +5,9 @@ nodes:
       - { name: net0, type: direct, args: R2#net0 }
       - { name: net1, type: direct, args: C1#net0 }
       - { name: net2, type: direct, args: C3#net0 }
+    sysctls:
+      - { sysctl: net.ipv6.conf.all.disable_ipv6=0 }
+      - { sysctl: net.ipv6.conf.all.forwarding=1 }
     mounts:
       - $PWD/config.json:/config.json:ro
   - name: R2
@@ -13,22 +16,37 @@ nodes:
       - { name: net0, type: direct, args: R1#net0 }
       - { name: net1, type: direct, args: C2#net0 }
       - { name: net2, type: direct, args: C4#net0 }
+    sysctls:
+      - { sysctl: net.ipv6.conf.all.disable_ipv6=0 }
+      - { sysctl: net.ipv6.conf.all.forwarding=1 }
   - name: C1
     image: docker.io/library/alpine
     interfaces:
       - { name: net0, type: direct, args: R1#net1 }
+    sysctls:
+      - { sysctl: net.ipv6.conf.all.disable_ipv6=0 }
+      - { sysctl: net.ipv6.conf.all.forwarding=1 }
   - name: C2
     image: docker.io/library/alpine
     interfaces:
       - { name: net0, type: direct, args: R2#net1 }
+    sysctls:
+      - { sysctl: net.ipv6.conf.all.disable_ipv6=0 }
+      - { sysctl: net.ipv6.conf.all.forwarding=1 }
   - name: C3
     image: docker.io/library/alpine
     interfaces:
       - { name: net0, type: direct, args: R1#net2 }
+    sysctls:
+      - { sysctl: net.ipv6.conf.all.disable_ipv6=0 }
+      - { sysctl: net.ipv6.conf.all.forwarding=1 }
   - name: C4
     image: docker.io/library/alpine
     interfaces:
       - { name: net0, type: direct, args: R2#net2 }
+    sysctls:
+      - { sysctl: net.ipv6.conf.all.disable_ipv6=0 }
+      - { sysctl: net.ipv6.conf.all.forwarding=1 }
 
 node_configs:
   - name: R1
@@ -36,31 +54,44 @@ node_configs:
       - cmd: ip addr add 10.0.0.1/24 dev net0
       - cmd: ip addr add 10.1.0.1/24 dev net1
       - cmd: ip addr add 10.3.0.1/24 dev net2
+      - cmd: ip addr add 2001:db8:0::1/64 dev net0
+      - cmd: ip addr add 2001:db8:1::1/64 dev net1
+      - cmd: ip addr add 2001:db8:3::1/64 dev net2
   - name: R2
     cmds:
       - cmd: /usr/lib/frr/frr start
       - cmd: ip addr add 10.0.0.2/24 dev net0
       - cmd: ip addr add 10.2.0.1/24 dev net1
       - cmd: ip addr add 10.4.0.1/24 dev net2
+      - cmd: ip addr add 2001:db8:0::2/64 dev net0
+      - cmd: ip addr add 2001:db8:2::1/64 dev net1
+      - cmd: ip addr add 2001:db8:4::1/64 dev net2
       - cmd: >-
           vtysh -c "conf t"
           -c "router bgp 65002"
           -c "bgp router-id 10.0.0.2"
           -c "neighbor 10.0.0.1 remote-as 65001"
           -c "network 10.2.0.0/24"
+          -c "address-family ipv6 unicast"
+          -c "neighbor 10.0.0.1 activate"
+          -c "network 2001:db8:2::/64"
   - name: C1
     cmds:
       - cmd: ip addr add 10.1.0.2/24 dev net0
       - cmd: ip route add default via 10.1.0.1 dev net0
+      - cmd: ip addr add 2001:db8:1::2/64 dev net0
   - name: C2
     cmds:
       - cmd: ip addr add 10.2.0.2/24 dev net0
       - cmd: ip route add default via 10.2.0.1 dev net0
+      - cmd: ip addr add 2001:db8:2::2/64 dev net0
   - name: C3
     cmds:
       - cmd: ip addr add 10.3.0.2/24 dev net0
       - cmd: ip route add default via 10.3.0.1 dev net0
+      - cmd: ip addr add 2001:db8:3::2/64 dev net0
   - name: C4
     cmds:
       - cmd: ip addr add 10.4.0.2/24 dev net0
       - cmd: ip route add default via 10.4.0.1 dev net0
+      - cmd: ip addr add 2001:db8:4::2/64 dev net0
