@@ -105,12 +105,12 @@ func CreateWithdrawnMessage(r *net.IPNet) UpdateMessage {
 }
 
 func CreateUpdateMessage(e *RIBEntry, prependAS uint16, selfNextHop net.IP) UpdateMessage {
+	nextHop := e.NextHop
+	if nextHop == nil {
+		nextHop = selfNextHop
+	}
 	switch len(e.Prefix.IP) {
 	case 4:
-		nextHop := e.NextHop
-		if nextHop == nil {
-			nextHop = selfNextHop
-		}
 		pathAttributes := []PathAttribute{
 			e.Origin.ToPathAttribute(),
 			ASPath{
@@ -132,7 +132,7 @@ func CreateUpdateMessage(e *RIBEntry, prependAS uint16, selfNextHop net.IP) Upda
 			}.ToPathAttribute(),
 			MPReachNLRI{
 				AF:      IPv6Unicast,
-				NextHop: []net.IP{e.NextHop}, // TODO: いい感じに
+				NextHop: []net.IP{nextHop},
 				NLRI:    []*net.IPNet{e.Prefix},
 			}.ToPathAttribute(),
 		}
