@@ -35,8 +35,8 @@ func MPReachNLRIFromPathAttribute(a PathAttribute) (MPReachNLRI, error) {
 
 	v.NextHop = make([]net.IP, a.Value[3]/byte(v.AF.NextHopSize()))
 	for i := 0; i < len(v.NextHop); i++ {
-		offset := 4 + v.AF.NextHopSize()*i
-		v.NextHop[i] = net.IP(a.Value[offset : offset+v.AF.NextHopSize()])
+		offset := 4 + v.AF.NextHopSize()*i + v.AF.SAFI.NextHopIgnorableSize()
+		v.NextHop[i] = net.IP(a.Value[offset : offset+v.AF.AFI.Size()])
 	}
 
 	r := bytes.NewReader(a.Value[5+a.Value[3]:])
@@ -56,8 +56,9 @@ func (a MPReachNLRI) ToPathAttribute() PathAttribute {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.BigEndian, uint16(a.AF.AFI))
 	buf.Write([]byte{uint8(a.AF.SAFI), uint8(len(a.NextHop) * a.AF.NextHopSize())})
-	for _, a := range a.NextHop {
-		buf.Write([]byte(a))
+	for _, nh := range a.NextHop {
+		buf.Write(make([]byte, a.AF.SAFI.NextHopIgnorableSize()))
+		buf.Write([]byte(nh))
 	}
 	buf.Write([]byte{0}) // Reserved
 	for _, r := range a.NLRI {

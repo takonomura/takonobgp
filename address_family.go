@@ -10,9 +10,10 @@ type (
 )
 
 const (
-	AFIIPv4     AFI  = 1
-	AFIIPv6     AFI  = 2
-	SAFIUnicast SAFI = 1
+	AFIIPv4               AFI  = 1
+	AFIIPv6               AFI  = 2
+	SAFIUnicast           SAFI = 1
+	SAFILabeledVPNUnicast SAFI = 128
 )
 
 var (
@@ -24,7 +25,26 @@ var (
 		AFI:  AFIIPv6,
 		SAFI: SAFIUnicast,
 	}
+	IPv6VPN = AddressFamily{
+		AFI:  AFIIPv6,
+		SAFI: SAFILabeledVPNUnicast,
+	}
 )
+
+func (afi AFI) Size() int {
+	switch afi {
+	case AFIIPv4:
+		return 4
+	case AFIIPv6:
+		return 16
+	default:
+		return 0 // TODO
+	}
+}
+
+func (afi AFI) Bits() int {
+	return afi.Size() * 8
+}
 
 type AddressFamily struct {
 	AFI  AFI
@@ -37,13 +57,24 @@ func (f AddressFamily) AddressBits() int {
 		return 32
 	case f.AFI == AFIIPv6 && f.SAFI == SAFIUnicast:
 		return 128
+	case f.AFI == AFIIPv6 && f.SAFI == SAFILabeledVPNUnicast:
+		return 128 + 64
 	default:
 		panic(fmt.Errorf("unknown address family: AFI=%d SAFI=%d", f.AFI, f.SAFI))
 	}
 }
 
+func (safi SAFI) NextHopIgnorableSize() int {
+	switch safi {
+	case SAFILabeledVPNUnicast:
+		return 8
+	default:
+		return 0
+	}
+}
+
 func (f AddressFamily) NextHopSize() int {
-	return f.AddressBits() / 8
+	return f.AFI.Size() + f.SAFI.NextHopIgnorableSize()
 }
 
 func (f AddressFamily) String() string {
@@ -52,8 +83,10 @@ func (f AddressFamily) String() string {
 		return "ipv4-unicast"
 	case IPv6Unicast:
 		return "ipv6-unicast"
+	case IPv6VPN:
+		return "ipv6-vpn"
 	default:
-		return fmt.Sprint("address-family-%d-%d", f.AFI, f.SAFI)
+		return fmt.Sprintf("address-family-%d-%d", f.AFI, f.SAFI)
 	}
 }
 
@@ -63,6 +96,8 @@ func AddressFamilyFromString(name string) (AddressFamily, bool) {
 		return IPv4Unicast, true
 	case "ipv6-unicast":
 		return IPv6Unicast, true
+	case "ipv6-vpn":
+		return IPv6VPN, true
 	default:
 		return AddressFamily{}, false
 	}
