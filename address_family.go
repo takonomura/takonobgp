@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 )
 
@@ -100,5 +101,20 @@ func AddressFamilyFromString(name string) (AddressFamily, bool) {
 		return IPv6VPN, true
 	default:
 		return AddressFamily{}, false
+	}
+}
+
+func (f AddressFamily) ReadNLRI(r *bytes.Reader) (NLRI, error) {
+	switch f.SAFI {
+	case SAFIUnicast:
+		r, err := readIPNet(r, f.AFI.Bits())
+		if err != nil {
+			return nil, err
+		}
+		return UnicastNLRI{r}, nil
+	case SAFILabeledVPNUnicast:
+		return readLabeledVPNNLRI(r, f.AFI)
+	default:
+		return nil, fmt.Errorf("unknown address family: %v", f)
 	}
 }

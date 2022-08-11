@@ -61,7 +61,7 @@ func UpdateMessageToRIBEntries(m UpdateMessage, source *Peer) ([]WithdrawnRoute,
 	for _, r := range mpReach.NLRI {
 		entries = append(entries, &RIBEntry{
 			AF:              mpReach.AF,
-			Prefix:          r,
+			Prefix:          r.Prefix(),
 			Origin:          origin,
 			ASPath:          asPath,
 			NextHop:         mpReach.NextHop[0], // TODO: Select best
@@ -133,7 +133,7 @@ func CreateUpdateMessage(e *RIBEntry, prependAS uint16, selfNextHop net.IP) Upda
 			MPReachNLRI{
 				AF:      IPv6Unicast,
 				NextHop: []net.IP{nextHop},
-				NLRI:    []*net.IPNet{e.Prefix},
+				NLRI:    []NLRI{UnicastNLRI{e.Prefix}},
 			}.ToPathAttribute(),
 		}
 		return UpdateMessage{

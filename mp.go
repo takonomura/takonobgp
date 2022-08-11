@@ -15,7 +15,7 @@ const (
 type MPReachNLRI struct {
 	AF      AddressFamily
 	NextHop []net.IP
-	NLRI    []*net.IPNet
+	NLRI    []NLRI
 }
 
 func MPReachNLRIFromPathAttribute(a PathAttribute) (MPReachNLRI, error) {
@@ -42,11 +42,11 @@ func MPReachNLRIFromPathAttribute(a PathAttribute) (MPReachNLRI, error) {
 	r := bytes.NewReader(a.Value[5+a.Value[3]:])
 
 	for r.Len() > 0 {
-		route, err := readIPNet(r, v.AF.AddressBits())
+		nlri, err := v.AF.ReadNLRI(r)
 		if err != nil {
 			return MPReachNLRI{}, fmt.Errorf("nlri: %w", err)
 		}
-		v.NLRI = append(v.NLRI, route)
+		v.NLRI = append(v.NLRI, nlri)
 	}
 
 	return v, nil
@@ -62,7 +62,7 @@ func (a MPReachNLRI) ToPathAttribute() PathAttribute {
 	}
 	buf.Write([]byte{0}) // Reserved
 	for _, r := range a.NLRI {
-		writeIPNet(buf, r)
+		r.WriteTo(buf)
 	}
 
 	return PathAttribute{
