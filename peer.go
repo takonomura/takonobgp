@@ -133,7 +133,7 @@ func (p *Peer) receiveMessages() error {
 				return err
 			}
 		default:
-			if err := p.conn.SetReadDeadline(time.Now().Add(10 * time.Second)); err != nil {
+			if err := p.conn.SetReadDeadline(time.Now().Add(2 * time.Second)); err != nil {
 				return err
 			}
 		}
