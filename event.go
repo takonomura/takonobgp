@@ -41,7 +41,7 @@ func (e ManualStartEvent) Do(p *Peer) error {
 	}
 	p.setState(StateConnect)
 	var err error
-	if p.conn, err = net.Dial("tcp", net.JoinHostPort(p.NeighborAddress, "179")); err != nil {
+	if p.conn, err = net.DialTimeout("tcp", net.JoinHostPort(p.NeighborAddress, "179"), 5*time.Second); err != nil {
 		return err
 	}
 	p.eventChan <- TcpCRAckedEvent{}
