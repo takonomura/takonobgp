@@ -138,11 +138,11 @@ postinit:
        exit-address-family
       !
       EOF
-  - cmd: docker cp /tmp/daemons R1:/etc/frr/daemons
+  #- cmd: docker cp /tmp/daemons R1:/etc/frr/daemons
   - cmd: docker cp /tmp/daemons R2:/etc/frr/daemons
   - cmd: docker cp /tmp/daemons C1:/etc/frr/daemons
   - cmd: docker cp /tmp/daemons C2:/etc/frr/daemons
-  - cmd: docker cp /tmp/frr.r1.conf R1:/etc/frr/frr.conf
+  #- cmd: docker cp /tmp/frr.r1.conf R1:/etc/frr/frr.conf
   - cmd: docker cp /tmp/frr.r2.conf R2:/etc/frr/frr.conf
   - cmd: docker cp /tmp/frr.c1.conf C1:/etc/frr/frr.conf
   - cmd: docker cp /tmp/frr.c2.conf C2:/etc/frr/frr.conf
