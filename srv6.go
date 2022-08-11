@@ -112,14 +112,18 @@ func ParseSRv6SIDInforSubTLV(b []byte) (SRv6SIDInfoSubTLV, error) {
 	}
 
 	v := SRv6SIDInfoSubTLV{
-		SID:              make(net.IP, 16),
+		SID:              net.IP(b[1:17]),
 		Flags:            b[17],
 		EndpointBehavior: binary.BigEndian.Uint16(b[18:20]),
 	}
 
 	r := bytes.NewReader(b[21:])
 	for r.Len() > 0 {
-
+		subsub, err := ReadSRv6ServiceDataSubSubTLV(r)
+		if err != nil {
+			return SRv6SIDInfoSubTLV{}, fmt.Errorf("read SRv6 sub sub tlv: %w", err)
+		}
+		v.SubSubTLV = append(v.SubSubTLV, subsub)
 	}
 	return v, nil
 }

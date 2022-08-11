@@ -99,12 +99,11 @@ func readLabeledVPNNLRI(r *bytes.Reader, afi AFI) (NLRI, error) {
 		}
 	}
 
-	var rd RD
-	if _, err := io.ReadFull(r, rd[:]); err != nil {
+	if _, err := io.ReadFull(r, nlri.RD[:]); err != nil {
 		return nil, err
 	}
 
-	length -= len(nlri.Labels)*3 + 8
+	length -= len(nlri.Labels)*24 + 64
 	prefix := make(net.IP, afi.Size())
 	if _, err := io.ReadFull(r, prefix[:prefixByteLength(length)]); err != nil {
 		return nil, err
