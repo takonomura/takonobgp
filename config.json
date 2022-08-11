@@ -1,15 +1,12 @@
 {
-  "networks": ["10.1.0.0/24", "2001:db8:1::/64"],
+  "networks": [],
   "peer": {
-    "as": 65001,
-    "router_id": "10.0.0.1",
-    "neighbor": "10.0.0.2",
+    "as": 1,
+    "router_id": "1.1.1.1",
+    "neighbor": "2001:ffff::2",
     "address_families": {
-      "ipv4-unicast": {
-        "next_hop": "10.0.0.1"
-      },
-      "ipv6-unicast": {
-        "next_hop": "2001:db8::1"
+      "ipv6-vpn": {
+        "next_hop": "2001:ffff::1"
       }
     }
   }

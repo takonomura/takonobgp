@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net"
 )
 
@@ -20,6 +21,9 @@ func UpdateMessageToRIBEntries(m UpdateMessage, source *Peer) ([]WithdrawnRoute,
 		mpReach   MPReachNLRI
 		mpUnreach MPUnreachNLRI
 
+		extendedCommunities ExtendedCommunities
+		srv6                SRv6ServiceTLV
+
 		err error
 	)
 
@@ -35,12 +39,40 @@ func UpdateMessageToRIBEntries(m UpdateMessage, source *Peer) ([]WithdrawnRoute,
 			mpReach, err = MPReachNLRIFromPathAttribute(a)
 		case AttributeTypeMPUnreachNLRI:
 			mpUnreach, err = MPUnreachNLRIFromPathAttribute(a)
+		case AttributeTypeExtendedCommunities:
+			extendedCommunities, err = ExtendedCommunitiesFromPathAttribute(a)
+		case AttributeTypePrefixSID:
+			srv6, err = PrefixSIDFromPathAttribute(a)
 		default:
 			others = append(others, a)
 		}
 		if err != nil {
 			return nil, nil, err
 		}
+	}
+
+	if srv6.Type != 0 {
+		if len(mpUnreach.WithdrawnRoutes) > 0 {
+			// TODO:
+			return nil, nil, nil
+		}
+		log.Printf("received update message:")
+		log.Printf("    ORIGIN: %d", origin)
+		log.Printf("    AS_PATH: %v", asPath.Segments)
+		log.Printf("    EXTENDED_COMMUNITIES: %v", extendedCommunities)
+		log.Printf("    NEXT_HOPS:")
+		for _, nh := range mpReach.NextHop {
+			log.Printf("    - %v", nh)
+		}
+		log.Printf("    NLRI:")
+		for _, nlri := range mpReach.NLRI {
+			vpn := nlri.(LabeledVPNNLRI)
+			log.Printf("    - %v (%s)", vpn.IPNet, vpn.RD)
+			for _, l := range vpn.Labels {
+				log.Printf("      * Label: %d (bottom: %v %x)", l.Label(), l.Bottom(), l)
+			}
+		}
+		return nil, nil, nil
 	}
 
 	withdrawns := make([]WithdrawnRoute, 0, len(m.WirhdrawnRoutes)+len(mpUnreach.WithdrawnRoutes))

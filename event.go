@@ -143,6 +143,48 @@ func (e KeepaliveMessageEvent) Do(p *Peer) error {
 				}
 			}
 		}
+
+		p.sendMessage(UpdateMessage{
+			PathAttributes: []PathAttribute{
+				MPReachNLRI{
+					AF:      IPv6VPN,
+					NextHop: []net.IP{p.AddressFamilies[IPv6VPN].SelfNextHop},
+					NLRI: []NLRI{
+						LabeledVPNNLRI{
+							Labels: []Label{NewLabel(0x0100_0, 3)},
+							RD:     NewRD(1, 100),
+							IPNet:  mustIPNet("2001:bb11::/64"),
+						},
+					},
+				}.ToPathAttribute(),
+				OriginAttributeIncomplete.ToPathAttribute(),
+				ASPath{Sequence: true, Segments: []uint16{1}}.ToPathAttribute(),
+				ExtendedCommunities{
+					ExtendedCommunity{
+						Type:      ExtendedCommunityType{0x00, 0x02},
+						Community: []byte{00, 99, 00, 00, 00, 99},
+					},
+				}.ToPathAttribute(),
+				SRv6ServiceTLV{
+					Type: PrefixSIDTLVTypeSRv6L3Service,
+					SubTLVs: []SRv6ServiceSubTLV{SRv6SIDInfoSubTLV{
+						SID:              net.ParseIP("2001:1111::"),
+						Flags:            0x00,
+						EndpointBehavior: 0xFFFF,
+						SubSubTLV: []SRv6ServiceDataSubSubTLV{SRv6SIDStructureSubSubTLV{
+							LocatorBlockLength:  40,
+							LocatorNodeLength:   24,
+							FunctionLength:      16,
+							ArgumentLength:      0,
+							TranspositionLength: 16,
+							TranspositionOffset: 64,
+						}},
+					},
+					},
+				}.ToPathAttribute(),
+			},
+		})
+
 		return nil
 	case StateEstablished:
 		p.holdTimer.Reset(time.Duration(p.HoldTime) * time.Second)
