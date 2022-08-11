@@ -129,9 +129,13 @@ func (p *Peer) receiveMessages() error {
 	for {
 		switch p.State {
 		case StateEstablished:
-			p.conn.SetReadDeadline(time.Now().Add(time.Duration(p.HoldTime+10) * time.Second))
+			if err := p.conn.SetReadDeadline(time.Now().Add(time.Duration(p.HoldTime+10) * time.Second)); err != nil {
+				return err
+			}
 		default:
-			p.conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+			if err := p.conn.SetReadDeadline(time.Now().Add(10 * time.Second)); err != nil {
+				return err
+			}
 		}
 		m, err := ReadPacket(p.conn)
 		if err != nil {
