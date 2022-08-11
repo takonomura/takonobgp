@@ -55,16 +55,16 @@ func NewLabel(l uint32, bottom uint8) Label {
 
 type RD [8]byte
 
-func NewRD(high, low uint64) RD {
+func NewRD(high, low uint32) RD {
 	var rd RD
-	binary.BigEndian.PutUint64(rd[0:4], high)
-	binary.BigEndian.PutUint64(rd[0:4], low)
+	binary.BigEndian.PutUint32(rd[0:4], high)
+	binary.BigEndian.PutUint32(rd[4:8], low)
 	return rd
 }
 
 func (rd RD) String() string {
-	h := binary.BigEndian.Uint64(rd[0:4])
-	l := binary.BigEndian.Uint64(rd[4:8])
+	h := binary.BigEndian.Uint32(rd[0:4])
+	l := binary.BigEndian.Uint32(rd[4:8])
 	return fmt.Sprintf("%d:%d", h, l)
 }
 
