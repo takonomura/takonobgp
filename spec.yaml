@@ -161,16 +161,19 @@ nodes:
   mounts:
   - $PWD/config.json:/config.json:ro
 - name: R2
-  image: tinynetwork/frr:develop
+  image: frrouting/frr:v8.3.0
+  docker_run_extra_args: --entrypoint bash
   interfaces:
   - { name: net0, type: direct, args: R1#net0 }
   - { name: net1, type: direct, args: C2#net0 }
 - name: C1
-  image: tinynetwork/frr:develop
+  image: frrouting/frr:v8.3.0
+  docker_run_extra_args: --entrypoint bash
   interfaces:
   - { name: net0, type: direct, args: R1#net1 }
 - name: C2
-  image: tinynetwork/frr:develop
+  image: frrouting/frr:v8.3.0
+  docker_run_extra_args: --entrypoint bash
   interfaces:
   - { name: net0, type: direct, args: R2#net1 }
 
