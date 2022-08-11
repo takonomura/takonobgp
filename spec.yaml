@@ -153,6 +153,8 @@ nodes:
   interfaces:
   - { name: net0, type: direct, args: R2#net0 }
   - { name: net1, type: direct, args: C1#net0 }
+  mounts:
+  - $PWD/config.json:/config.json:ro
 - name: R2
   image: tinynetwork/frr:develop
   interfaces:
