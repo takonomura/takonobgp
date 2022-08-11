@@ -153,6 +153,11 @@ nodes:
   interfaces:
   - { name: net0, type: direct, args: R2#net0 }
   - { name: net1, type: direct, args: C1#net0 }
+  sysctls:
+    - { sysctl: net.ipv6.conf.all.disable_ipv6=0 }
+    - { sysctl: net.ipv6.conf.all.forwarding=1 }
+    - { sysctl: net.ipv6.conf.all.seg6_enabled=1 }
+    - { sysctl: net.ipv4.conf.all.rp_filter=0 }
   mounts:
   - $PWD/config.json:/config.json:ro
 - name: R2
@@ -172,25 +177,11 @@ nodes:
 node_configs:
 - name: R1
   cmds:
-  - cmd: sysctl -w 'net.ipv6.conf.all.forwarding=1'
-  - cmd: sysctl -w 'net.ipv6.conf.all.disable_ipv6=0'
-  - cmd: sysctl -w 'net.ipv6.conf.all.seg6_enabled=1'
-  - cmd: sysctl -w 'net.ipv6.conf.default.forwarding=1'
-  - cmd: sysctl -w 'net.ipv6.conf.default.disable_ipv6=0'
-  - cmd: sysctl -w 'net.ipv6.conf.default.seg6_enabled=1'
-  - cmd: sysctl -w 'net.ipv6.conf.lo.seg6_enabled=1'
-  - cmd: sysctl -w 'net.ipv6.conf.net0.seg6_enabled=1'
-  - cmd: sysctl -w 'net.ipv6.conf.net1.seg6_enabled=1'
-  - cmd: sysctl -w 'net.ipv4.conf.all.rp_filter=0'
-  - cmd: sysctl -w 'net.ipv4.conf.lo.rp_filter=0'
-  - cmd: sysctl -w 'net.ipv4.conf.net0.rp_filter=0'
-  - cmd: sysctl -w 'net.ipv4.conf.net1.rp_filter=0'
-
   - cmd: ip addr add 2001:ffff::1/64 dev net0
   #- cmd: ip link add vrf100 type vrf table 100
   #- cmd: ip link set vrf100 up
   #- cmd: ip link set dev net1 vrf vrf100
-  #- cmd: ip addr add 2001:bb11::1/64 dev net1
+  - cmd: ip addr add 2001:bb11::1/64 dev net1
   #- cmd: /usr/lib/frr/frrinit.sh start
 
 - name: R2
